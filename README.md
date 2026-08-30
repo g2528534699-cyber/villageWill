@@ -51,3 +51,4 @@ VillageWill/
 
 - `gradle.properties` 中的 `org.gradle.java.home` 是本机 JDK17 路径，换机器或协作者需删除该行并设置系统 `JAVA_HOME`。
 - 游戏端已安装 Forge 1.20.1 (47.4.23)，`.minecraft/mods/` 目录已就绪，直接放入构建产物即可。
+- 在本开发环境中 Gradle 缓存目录被重定向到工作区的 `.gradle-user-home/`（沙箱限制），手动在 IDE/终端构建时无需此设置，使用默认 `~/.gradle` 即可。
