@@ -2,6 +2,10 @@
 
 一个以村庄为主题增强的 Minecraft Mod，使用 **Forge 1.20.1 (47.4.23)** 开发。
 
+- **远程仓库**: https://github.com/g2528534699-cyber/villageWill
+- 日常提交推送：`git add -A` → `git commit -m "说明"` → `git push`
+- 注意：本机直连 GitHub 可用（比走 socks5 代理稳定），`git push` 无需配置代理。
+
 ## 环境要求
 
 | 组件 | 版本 | 说明 |
