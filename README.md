@@ -50,5 +50,7 @@ VillageWill/
 ## 注意事项
 
 - `gradle.properties` 中的 `org.gradle.java.home` 是本机 JDK17 路径，换机器或协作者需删除该行并设置系统 `JAVA_HOME`。
+- `gradle.properties` 是 Java properties 格式（默认 ISO-8859-1），**中文必须写成 `\uXXXX` 转义**（如 `mod_name=\u6751\u5e84\u610f\u5fd7`），直接写中文会乱码。`build.gradle` 已设 `filteringCharset='UTF-8'` 保证资源输出编码正确。
 - 游戏端已安装 Forge 1.20.1 (47.4.23)，`.minecraft/mods/` 目录已就绪，直接放入构建产物即可。
 - 在本开发环境中 Gradle 缓存目录被重定向到工作区的 `.gradle-user-home/`（沙箱限制），手动在 IDE/终端构建时无需此设置，使用默认 `~/.gradle` 即可。
+- 构建已配置国内镜像加速：腾讯云 Gradle 发行版、阿里云 Maven（插件 + Central 镜像）。
