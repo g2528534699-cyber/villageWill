@@ -112,6 +112,9 @@ minecraft {
 sourceSets.main.resources { srcDir 'src/generated/resources' }
 
 repositories {
+    // 国内镜像加速（Maven Central 镜像）
+    maven { name = 'Aliyun-Public'; url = 'https://maven.aliyun.com/repository/public' }
+
     // Put repositories for dependencies here
     // ForgeGradle automatically adds the Forge maven and Maven Central for you
 
