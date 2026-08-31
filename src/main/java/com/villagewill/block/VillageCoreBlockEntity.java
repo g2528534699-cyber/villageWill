@@ -2,7 +2,9 @@ package com.villagewill.block;
 
 import com.villagewill.Config;
 import com.villagewill.util.VillageContext;
+import com.villagewill.village.BeaconAura;
 import com.villagewill.village.CoreRegistry;
+import com.villagewill.village.TechTree;
 import com.villagewill.village.VillageState;
 import com.mojang.logging.LogUtils;
 import net.minecraft.core.BlockPos;
@@ -34,11 +36,16 @@ public class VillageCoreBlockEntity extends BlockEntity {
 
     public static void tick(Level level, BlockPos pos, BlockState state, VillageCoreBlockEntity be) {
         if (level.isClientSide) return;
-        if (++be.tickCounter % Config.CORE_DAMAGE_CHECK_TICKS.get() != 0) return;
         if (!(level instanceof ServerLevel serverLevel)) return;
 
         VillageState vs = VillageState.get(serverLevel, pos);
         if (!vs.isCoreActive()) return; // 未激活不检测
+
+        // 绿宝石每日收入结算（核心激活期间持续入账）
+        vs.settleEmeraldIncome(serverLevel);
+
+        // 损坏检测/恢复（节流）
+        if (++be.tickCounter % Config.CORE_DAMAGE_CHECK_TICKS.get() != 0) return;
 
         int interval = Config.CORE_DAMAGE_CHECK_TICKS.get();
         int villagers = VillageContext.villagerCount(serverLevel, vs.key());
@@ -54,6 +61,7 @@ public class VillageCoreBlockEntity extends BlockEntity {
                 level.setBlock(pos, state.setValue(VillageCoreBlock.DAMAGED, true), 3);
                 LogUtils.getLogger().warn("[VW] 村庄核心损坏: {}（村庄内所有村民死亡）", pos);
             }
+            return;
         } else {
             // 有人 → 累计恢复进度
             vs.setDamageProgress(0);
@@ -64,6 +72,20 @@ public class VillageCoreBlockEntity extends BlockEntity {
                 level.setBlock(pos, state.setValue(VillageCoreBlock.DAMAGED, false), 3);
                 LogUtils.getLogger().info("[VW] 村庄核心恢复: {}（村民重新出现）", pos);
             }
+        }
+
+        // 信标光环（节流）
+        if (be.tickCounter % Config.BEACON_TICK_INTERVAL.get() == 0) {
+            BeaconAura.tick(serverLevel, pos, vs);
+        }
+        // 科技树自主升级（节流）
+        if (be.tickCounter % Config.TECH_CHECK_TICKS.get() == 0) {
+            TechTree.tick(serverLevel, pos, vs);
+        }
+        // 警卫队长管理（生成/复活/派遣/科技消费，节流）
+        if (Config.CAPTAIN_ENABLED.get()
+                && be.tickCounter % Config.CAPTAIN_CHECK_TICKS.get() == 0) {
+            com.villagewill.village.CaptainManager.tick(serverLevel, pos, vs);
         }
     }
 

@@ -86,6 +86,7 @@ public class VillageWill
     private static void registerAttributes(EntityAttributeCreationEvent event)
     {
         event.put(ModEntities.STONE_GOLEM.get(), StoneGolem.createAttributes().build());
+        event.put(ModEntities.GUARD_CAPTAIN.get(), com.villagewill.entity.GuardCaptain.createAttributes().build());
     }
 
     private void commonSetup(final FMLCommonSetupEvent event)
@@ -112,6 +113,7 @@ public class VillageWill
         {
             event.registerEntityRenderer(ModEntities.STONE_GOLEM.get(), com.villagewill.entity.client.StoneGolemRenderer::new);
             event.registerEntityRenderer(ModEntities.THROWN_STONE.get(), com.villagewill.entity.client.ThrownStoneRenderer::new);
+            event.registerEntityRenderer(ModEntities.GUARD_CAPTAIN.get(), com.villagewill.entity.client.GuardCaptainRenderer::new);
         }
     }
 }

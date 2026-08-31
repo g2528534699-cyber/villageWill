@@ -30,6 +30,7 @@ public final class CoreConversion {
 
         // 村庄中心：最近的核心 POI 或钟（128 格内），无则跳过
         BlockPos center = VillageContext.villageCenter(level, villager.blockPosition());
+        if (center == null) return;
         if (!level.getBlockState(center).is(net.minecraft.world.level.block.Blocks.BELL)
                 && !level.getBlockState(center).is(com.villagewill.block.VillageCoreBlock.INSTANCE)) {
             return; // 找不到钟/核心
@@ -54,6 +55,6 @@ public final class CoreConversion {
         state.setCoreActive(true);
         CoreChunkLoader.forceLoadCore(level, bellPos);
         LogUtils.getLogger().info("[VW] 村庄核心已激活: {} 村民数={}", bellPos, state.key());
-        // TODO(阶段三 Part 3)：生成警卫队长与 4 名护卫
+        // 警卫队长与护卫由 CaptainManager（核心 BE ticker）首次检查时自动生成（免费）
     }
 }

@@ -60,6 +60,7 @@ public final class ThreatResponse {
 
         // 村庄绿宝石结算与扣费（仅核心激活且未损坏时生效）
         BlockPos center = VillageContext.villageCenter(level, hurt.blockPosition());
+        if (center == null) return; // 无核心/钟的野区不响应
         VillageState state = VillageState.get(level, center);
         if (!state.isCoreActive() || state.isCoreDamaged()) return;
         state.settleEmeraldIncome(level);
@@ -126,7 +127,8 @@ public final class ThreatResponse {
      * 综合威胁评估（§4.3）：基础权重 × 属性因子
      * 属性因子 = 0.4 + 0.3×(生命/20) + 0.3×(攻击/3) + 0.2×((护甲+韧性)/15)，钳制 0.4~3.0
      */
-    private static double evaluateThreat(Mob mob) {
+    /** 威胁综合评估：类型权重 × 属性因子（攻击/血量/速度），兼容其他 mod 生物（Part 3 队长派遣复用） */
+    public static double evaluateThreat(Mob mob) {
         int base = threatWeight(mob);
         if (!Config.THREAT_ATTR_EVALUATION.get()) return base;
         double health = attrValue(mob, Attributes.MAX_HEALTH, 20.0);

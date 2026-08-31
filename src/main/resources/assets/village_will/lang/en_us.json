@@ -2,6 +2,7 @@
   "_comment": "Village Will English language file",
   "item.village_will.stone_ball": "Stone Ball",
   "entity.village_will.stone_golem": "Stone Golem",
+  "entity.village_will.guard_captain": "Guard Captain",
   "block.village_will.village_core": "Village Core",
   "gui.village_will.core.title": "=== Village Core ===",
   "gui.village_will.core.villagers": "Villagers: %s",

@@ -30,7 +30,8 @@ public final class VillageContext {
         return villager.getBrain().getMemory(MemoryModuleType.HOME).map(GlobalPos::pos);
     }
 
-    /** 村庄代表点：最近的核心（注册表/扫描已加载区块）→ 钟（MEETING）→ 给定位置 */
+    /** 村庄代表点：最近的核心（注册表/扫描已加载区块）→ 钟（MEETING）。找不到返回 null（调用方跳过，避免以任意坐标创建村庄存档） */
+    @javax.annotation.Nullable
     public static BlockPos villageCenter(ServerLevel level, BlockPos pos) {
         // 1. 内存注册表（快速路径）
         BlockPos core = com.villagewill.village.CoreRegistry.nearest(level.dimension(), pos, 128);
@@ -41,7 +42,7 @@ public final class VillageContext {
         // 3. 钟（未转换的村庄）
         return level.getPoiManager()
                 .findClosest(holder -> holder.is(PoiTypes.MEETING), pos, 128, PoiManager.Occupancy.ANY)
-                .orElse(pos.immutable());
+                .orElse(null);
     }
 
     /** 扫描范围内已加载区块中的村庄核心，返回最近者 */

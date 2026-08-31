@@ -1,6 +1,7 @@
 package com.villagewill.registry;
 
 import com.villagewill.VillageWill;
+import com.villagewill.entity.GuardCaptain;
 import com.villagewill.entity.StoneGolem;
 import com.villagewill.entity.ThrownStone;
 import net.minecraft.world.entity.EntityType;
@@ -32,6 +33,14 @@ public final class ModEntities {
                     .clientTrackingRange(4)
                     .updateInterval(10)
                     .build("thrown_stone"));
+
+    /** 警卫队长（阶段三 Part 3：村庄核心护卫，独立战斗 AI） */
+    public static final RegistryObject<EntityType<GuardCaptain>> GUARD_CAPTAIN =
+            ENTITY_TYPES.register("guard_captain", () -> EntityType.Builder
+                    .<GuardCaptain>of(GuardCaptain::new, MobCategory.MISC)
+                    .sized(0.6F, 1.95F)
+                    .clientTrackingRange(10)
+                    .build("guard_captain"));
 
     private ModEntities() {
     }

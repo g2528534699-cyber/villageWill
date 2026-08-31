@@ -56,6 +56,7 @@ public class MasonBuildGoal extends Goal {
         if (mem == null || mem.usesFor(ACTION_ID, Config.MASON_HOUSES_PER_DAY.get()) <= 0) return false;
 
         this.villageKey = VillageContext.villageCenter(level, villager.blockPosition());
+        if (villageKey == null) return false; // 无村庄（核心/钟）不干活
         VillageState state = VillageState.get(level, villageKey);
         if (!state.canBuild()) return false;
         BlockPos plot = findPlot(level, state, villageKey);

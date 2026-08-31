@@ -2,6 +2,7 @@
   "_comment": "村庄意志 中文语言文件",
   "item.village_will.stone_ball": "石头球",
   "entity.village_will.stone_golem": "石傀儡",
+  "entity.village_will.guard_captain": "警卫队长",
   "block.village_will.village_core": "村庄核心",
   "gui.village_will.core.title": "=== 村庄核心 ===",
   "gui.village_will.core.villagers": "村民数: %s",

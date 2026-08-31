@@ -94,6 +94,48 @@ public class Config {
     public static final ForgeConfigSpec.IntValue CORE_DAMAGE_THRESHOLD_TICKS;
     public static final ForgeConfigSpec.IntValue CORE_REPAIR_THRESHOLD_TICKS;
 
+    // ---------- 科技树（核心自主升级） ----------
+    public static final ForgeConfigSpec.IntValue TECH_CHECK_TICKS;
+    public static final ForgeConfigSpec.IntValue TECH_MAX_LEVEL;
+    public static final ForgeConfigSpec.IntValue TECH_BEACON_EFFECT_COST_BASE;
+    public static final ForgeConfigSpec.IntValue TECH_BEACON_EFFECT_COST_PER_LEVEL;
+    public static final ForgeConfigSpec.IntValue TECH_BEACON_RANGE_COST_BASE;
+    public static final ForgeConfigSpec.IntValue TECH_BEACON_RANGE_COST_PER_LEVEL;
+    public static final ForgeConfigSpec.IntValue TECH_WALL_COST_BASE;
+    public static final ForgeConfigSpec.IntValue TECH_WALL_COST_MULTIPLIER;
+    public static final ForgeConfigSpec.IntValue TECH_CAPTAIN_COST_PER_LEVEL;
+    public static final ForgeConfigSpec.IntValue TECH_ESCORT_COST_PER_LEVEL;
+    public static final ForgeConfigSpec.IntValue TECH_GUARD_COST_PER_LEVEL;
+
+    // ---------- 信标光环 ----------
+    public static final ForgeConfigSpec.IntValue BEACON_RADIUS_BASE;
+    public static final ForgeConfigSpec.IntValue BEACON_RADIUS_PER_LEVEL;
+    public static final ForgeConfigSpec.IntValue BEACON_REPUTATION_THRESHOLD;
+    public static final ForgeConfigSpec.IntValue BEACON_TICK_INTERVAL;
+
+    // ---------- 围墙 ----------
+    public static final ForgeConfigSpec.IntValue WALL_RADIUS;
+    public static final ForgeConfigSpec.IntValue WALL_HEIGHT;
+    public static final ForgeConfigSpec.IntValue WALL_GATE_WIDTH;
+
+    // ---------- 警卫队长（Part 3） ----------
+    public static final ForgeConfigSpec.BooleanValue CAPTAIN_ENABLED;
+    public static final ForgeConfigSpec.IntValue CAPTAIN_HEALTH;
+    public static final ForgeConfigSpec.IntValue CAPTAIN_ATTACK;
+    public static final ForgeConfigSpec.IntValue CAPTAIN_ESCORTS;
+    public static final ForgeConfigSpec.IntValue CAPTAIN_RESURRECT_COST;
+    public static final ForgeConfigSpec.IntValue CAPTAIN_SCAN_RANGE;
+    public static final ForgeConfigSpec.IntValue CAPTAIN_SCAN_TICKS;
+    public static final ForgeConfigSpec.IntValue CAPTAIN_CHECK_TICKS;
+    public static final ForgeConfigSpec.DoubleValue CAPTAIN_EXPLOSION_POWER;
+    public static final ForgeConfigSpec.IntValue CAPTAIN_EXPLOSION_INTERVAL;
+    public static final ForgeConfigSpec.IntValue CAPTAIN_BRIDGE_INTERVAL;
+    public static final ForgeConfigSpec.IntValue CAPTAIN_SHOOT_INTERVAL;
+    public static final ForgeConfigSpec.IntValue TECH_CAPTAIN_HP_PER_LEVEL;
+    public static final ForgeConfigSpec.IntValue TECH_CAPTAIN_ATK_PER_LEVEL;
+    public static final ForgeConfigSpec.IntValue TECH_GUARD_HP_PER_LEVEL;
+    public static final ForgeConfigSpec.IntValue TECH_GUARD_ATK_PER_LEVEL;
+
     // ---------- 石匠 ----------
     public static final ForgeConfigSpec.BooleanValue MASON_ENABLED;
     public static final ForgeConfigSpec.IntValue MASON_MAX_HOUSES;
@@ -338,6 +380,86 @@ public class Config {
                 .defineInRange("damageThresholdTicks", 1200, 100, 24000);
         CORE_REPAIR_THRESHOLD_TICKS = BUILDER.comment("村民重新出现并存活该时长（tick）后核心自动恢复")
                 .defineInRange("repairThresholdTicks", 1200, 100, 24000);
+        BUILDER.pop();
+
+        BUILDER.push("tech_tree");
+        TECH_CHECK_TICKS = BUILDER.comment("科技树自主升级检查间隔（tick）")
+                .defineInRange("checkTicks", 200, 20, 1200);
+        TECH_MAX_LEVEL = BUILDER.comment("科技等级上限")
+                .defineInRange("maxLevel", 5, 1, 10);
+        TECH_BEACON_EFFECT_COST_BASE = BUILDER.comment("信标效果解锁基础成本（绿宝石）")
+                .defineInRange("beaconEffectCostBase", 20, 1, 1000);
+        TECH_BEACON_EFFECT_COST_PER_LEVEL = BUILDER.comment("信标效果每级递增成本")
+                .defineInRange("beaconEffectCostPerLevel", 10, 1, 1000);
+        TECH_BEACON_RANGE_COST_BASE = BUILDER.comment("信标范围升级基础成本")
+                .defineInRange("beaconRangeCostBase", 30, 1, 1000);
+        TECH_BEACON_RANGE_COST_PER_LEVEL = BUILDER.comment("信标范围每级递增成本")
+                .defineInRange("beaconRangeCostPerLevel", 20, 1, 1000);
+        TECH_WALL_COST_BASE = BUILDER.comment("围墙建造/升级基础成本（每级×倍数）")
+                .defineInRange("wallCostBase", 30, 1, 1000);
+        TECH_WALL_COST_MULTIPLIER = BUILDER.comment("围墙每级成本倍数")
+                .defineInRange("wallCostMultiplier", 2, 1, 10);
+        TECH_CAPTAIN_COST_PER_LEVEL = BUILDER.comment("队长科技每级成本")
+                .defineInRange("captainCostPerLevel", 50, 1, 1000);
+        TECH_ESCORT_COST_PER_LEVEL = BUILDER.comment("护卫科技每级成本")
+                .defineInRange("escortCostPerLevel", 40, 1, 1000);
+        TECH_GUARD_COST_PER_LEVEL = BUILDER.comment("警卫科技每级成本")
+                .defineInRange("guardCostPerLevel", 30, 1, 1000);
+        BUILDER.pop();
+
+        BUILDER.push("beacon");
+        BEACON_RADIUS_BASE = BUILDER.comment("信标初始半径（格，50×50=25）")
+                .defineInRange("radiusBase", 25, 5, 200);
+        BEACON_RADIUS_PER_LEVEL = BUILDER.comment("信标范围每级增加半径")
+                .defineInRange("radiusPerLevel", 10, 1, 100);
+        BEACON_REPUTATION_THRESHOLD = BUILDER.comment("玩家获得信标效果的最低村庄声望（聚合村民好感）")
+                .defineInRange("reputationThreshold", 10, 0, 1000);
+        BEACON_TICK_INTERVAL = BUILDER.comment("信标光环刷新间隔（tick）")
+                .defineInRange("tickInterval", 100, 20, 600);
+        BUILDER.pop();
+
+        BUILDER.push("wall");
+        WALL_RADIUS = BUILDER.comment("围墙半径（格，需大于小屋网格+余量）")
+                .defineInRange("radius", 48, 16, 256);
+        WALL_HEIGHT = BUILDER.comment("围墙高度（格）")
+                .defineInRange("height", 3, 1, 10);
+        WALL_GATE_WIDTH = BUILDER.comment("围墙通道宽度（格，单数）")
+                .defineInRange("gateWidth", 3, 1, 9);
+        BUILDER.pop();
+
+        BUILDER.push("captain");
+        CAPTAIN_ENABLED = BUILDER.comment("警卫队长功能总开关")
+                .define("enabled", true);
+        CAPTAIN_HEALTH = BUILDER.comment("队长基础生命")
+                .defineInRange("health", 80, 20, 500);
+        CAPTAIN_ATTACK = BUILDER.comment("队长基础攻击力")
+                .defineInRange("attack", 10, 1, 100);
+        CAPTAIN_ESCORTS = BUILDER.comment("队长护卫数量（每次生成/复活）")
+                .defineInRange("escorts", 4, 0, 8);
+        CAPTAIN_RESURRECT_COST = BUILDER.comment("队长阵亡后复活消耗（绿宝石）")
+                .defineInRange("resurrectCost", 100, 10, 10000);
+        CAPTAIN_SCAN_RANGE = BUILDER.comment("队长威胁扫描半径（格，仅已加载区块）")
+                .defineInRange("scanRange", 300, 32, 1024);
+        CAPTAIN_SCAN_TICKS = BUILDER.comment("队长威胁扫描间隔（tick）")
+                .defineInRange("scanTicks", 100, 20, 1200);
+        CAPTAIN_CHECK_TICKS = BUILDER.comment("队长管理检查间隔（生成/复活/科技，tick）")
+                .defineInRange("checkTicks", 100, 20, 1200);
+        CAPTAIN_EXPLOSION_POWER = BUILDER.comment("队长开路爆炸威力（破坏方块，实体无伤）")
+                .defineInRange("explosionPower", 3.0D, 1.0D, 8.0D);
+        CAPTAIN_EXPLOSION_INTERVAL = BUILDER.comment("开路爆炸间隔（tick）")
+                .defineInRange("explosionInterval", 60, 10, 600);
+        CAPTAIN_BRIDGE_INTERVAL = BUILDER.comment("垫方块间隔（tick）")
+                .defineInRange("bridgeInterval", 8, 1, 100);
+        CAPTAIN_SHOOT_INTERVAL = BUILDER.comment("弓射间隔（tick）")
+                .defineInRange("shootInterval", 30, 5, 200);
+        TECH_CAPTAIN_HP_PER_LEVEL = BUILDER.comment("队长科技每级额外生命")
+                .defineInRange("captainHpPerLevel", 10, 0, 200);
+        TECH_CAPTAIN_ATK_PER_LEVEL = BUILDER.comment("队长科技每级额外攻击")
+                .defineInRange("captainAtkPerLevel", 2, 0, 50);
+        TECH_GUARD_HP_PER_LEVEL = BUILDER.comment("警卫科技每级额外生命（全村警卫）")
+                .defineInRange("guardHpPerLevel", 4, 0, 100);
+        TECH_GUARD_ATK_PER_LEVEL = BUILDER.comment("警卫科技每级额外攻击（全村警卫）")
+                .defineInRange("guardAtkPerLevel", 1, 0, 20);
         BUILDER.pop();
 
         SPEC = BUILDER.build();

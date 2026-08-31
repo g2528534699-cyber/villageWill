@@ -25,6 +25,8 @@ public class VillageState extends SavedData {
     private final List<BlockPos> houseCenters = new ArrayList<>();
     /** 小屋中心 -> 已放床数 */
     private final Map<BlockPos, Integer> bedsPerHouse = new HashMap<>();
+    /** 围墙方块位置（升级材质时替换） */
+    private final List<BlockPos> wallPositions = new ArrayList<>();
     private long lastEmeraldDay = -1;
     /** 绿宝石余额（村庄核心支出/威胁召唤消耗） */
     private long emeraldBalance = 0;
@@ -50,6 +52,19 @@ public class VillageState extends SavedData {
     private int escortTechLevel = 0;
     /** 警卫科技等级（血量/攻击） */
     private int guardTechLevel = 0;
+    /** 警卫队长 UUID（null=从未生成；存在但实体不在=死亡待复活） */
+    private String captainUUID = null;
+    /** 护卫 UUID 列表（随队长复活重建） */
+    private final List<String> escortUUIDs = new ArrayList<>();
+    /** 队长装备存档（死亡时保存，复活时恢复） */
+    private CompoundTag captainEquipment = new CompoundTag();
+    /** 护卫是否已随队长生成过（复活时补全） */
+    private boolean escortsSpawned = false;
+    /** 队长是否已阵亡（false=存活或从未生成/服务器重启 → 免费重生；true=阵亡 → 消耗绿宝石复活） */
+    private boolean captainDead = false;
+    /** 上次已应用的护卫/警卫科技等级（避免重复换装/加属性） */
+    private int appliedEscortTech = -1;
+    private int appliedGuardTech = -1;
 
     public VillageState(BlockPos key) {
         this.key = key.immutable();
@@ -72,6 +87,11 @@ public class VillageState extends SavedData {
             state.houseCenters.add(new BlockPos(h.getInt("X"), h.getInt("Y"), h.getInt("Z")));
             state.bedsPerHouse.put(state.houseCenters.get(state.houseCenters.size() - 1), h.getInt("Beds"));
         }
+        ListTag walls = tag.getList("Walls", Tag.TAG_COMPOUND);
+        for (int i = 0; i < walls.size(); i++) {
+            CompoundTag w = walls.getCompound(i);
+            state.wallPositions.add(new BlockPos(w.getInt("X"), w.getInt("Y"), w.getInt("Z")));
+        }
         state.lastEmeraldDay = tag.getLong("LastEmeraldDay");
         state.emeraldBalance = tag.getLong("EmeraldBalance");
         state.lastThreatTime = tag.getLong("LastThreatTime");
@@ -85,6 +105,18 @@ public class VillageState extends SavedData {
         state.captainTechLevel = tag.getInt("CaptainTechLevel");
         state.escortTechLevel = tag.getInt("EscortTechLevel");
         state.guardTechLevel = tag.getInt("GuardTechLevel");
+        state.captainUUID = tag.contains("CaptainUUID") ? tag.getString("CaptainUUID") : null;
+        state.escortUUIDs.clear();
+        ListTag escorts = tag.getList("Escorts", Tag.TAG_STRING);
+        for (int i = 0; i < escorts.size(); i++) {
+            state.escortUUIDs.add(escorts.getString(i));
+        }
+        state.captainEquipment = tag.contains("CaptainEquipment")
+                ? tag.getCompound("CaptainEquipment") : new CompoundTag();
+        state.escortsSpawned = tag.getBoolean("EscortsSpawned");
+        state.captainDead = tag.getBoolean("CaptainDead");
+        state.appliedEscortTech = tag.contains("AppliedEscortTech") ? tag.getInt("AppliedEscortTech") : -1;
+        state.appliedGuardTech = tag.contains("AppliedGuardTech") ? tag.getInt("AppliedGuardTech") : -1;
         return state;
     }
 
@@ -100,6 +132,15 @@ public class VillageState extends SavedData {
             houses.add(h);
         }
         tag.put("Houses", houses);
+        ListTag walls = new ListTag();
+        for (BlockPos pos : wallPositions) {
+            CompoundTag w = new CompoundTag();
+            w.putInt("X", pos.getX());
+            w.putInt("Y", pos.getY());
+            w.putInt("Z", pos.getZ());
+            walls.add(w);
+        }
+        tag.put("Walls", walls);
         tag.putLong("LastEmeraldDay", lastEmeraldDay);
         tag.putLong("EmeraldBalance", emeraldBalance);
         tag.putLong("LastThreatTime", lastThreatTime);
@@ -113,6 +154,17 @@ public class VillageState extends SavedData {
         tag.putInt("CaptainTechLevel", captainTechLevel);
         tag.putInt("EscortTechLevel", escortTechLevel);
         tag.putInt("GuardTechLevel", guardTechLevel);
+        if (captainUUID != null) tag.putString("CaptainUUID", captainUUID);
+        ListTag escorts = new ListTag();
+        for (String s : escortUUIDs) {
+            escorts.add(net.minecraft.nbt.StringTag.valueOf(s));
+        }
+        tag.put("Escorts", escorts);
+        tag.put("CaptainEquipment", captainEquipment);
+        tag.putBoolean("EscortsSpawned", escortsSpawned);
+        tag.putBoolean("CaptainDead", captainDead);
+        tag.putInt("AppliedEscortTech", appliedEscortTech);
+        tag.putInt("AppliedGuardTech", appliedGuardTech);
         return tag;
     }
 
@@ -169,6 +221,93 @@ public class VillageState extends SavedData {
 
     public void setGuardTechLevel(int level) {
         this.guardTechLevel = level;
+        setDirty();
+    }
+
+    // ---------------- 队长 / 护卫 ----------------
+
+    @javax.annotation.Nullable
+    public String captainUUID() {
+        return captainUUID;
+    }
+
+    public void setCaptainUUID(java.util.UUID uuid) {
+        this.captainUUID = uuid.toString();
+        setDirty();
+    }
+
+    public List<String> escortUUIDs() {
+        return escortUUIDs;
+    }
+
+    public void addEscortUUID(java.util.UUID uuid) {
+        if (!escortUUIDs.contains(uuid.toString())) {
+            escortUUIDs.add(uuid.toString());
+            setDirty();
+        }
+    }
+
+    public CompoundTag captainEquipment() {
+        return captainEquipment;
+    }
+
+    public void setCaptainEquipment(CompoundTag tag) {
+        this.captainEquipment = tag;
+        setDirty();
+    }
+
+    public boolean escortsSpawned() {
+        return escortsSpawned;
+    }
+
+    public void setEscortsSpawned(boolean spawned) {
+        if (this.escortsSpawned != spawned) {
+            this.escortsSpawned = spawned;
+            setDirty();
+        }
+    }
+
+    public boolean isCaptainDead() {
+        return captainDead;
+    }
+
+    public void setCaptainDead(boolean dead) {
+        if (this.captainDead != dead) {
+            this.captainDead = dead;
+            setDirty();
+        }
+    }
+
+    public int appliedEscortTech() {
+        return appliedEscortTech;
+    }
+
+    public void setAppliedEscortTech(int level) {
+        if (this.appliedEscortTech != level) {
+            this.appliedEscortTech = level;
+            setDirty();
+        }
+    }
+
+    public int appliedGuardTech() {
+        return appliedGuardTech;
+    }
+
+    public void setAppliedGuardTech(int level) {
+        if (this.appliedGuardTech != level) {
+            this.appliedGuardTech = level;
+            setDirty();
+        }
+    }
+
+    // ---------------- 围墙 ----------------
+
+    public List<BlockPos> wallPositions() {
+        return wallPositions;
+    }
+
+    public void addWallPos(BlockPos pos) {
+        wallPositions.add(pos.immutable());
         setDirty();
     }
 

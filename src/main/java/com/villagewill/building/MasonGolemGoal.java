@@ -58,6 +58,7 @@ public class MasonGolemGoal extends Goal {
         if (mem.golems.size() >= Config.GOLEM_MAX_PER_MASON.get()) return false;
 
         BlockPos center = VillageContext.villageCenter(level, villager.blockPosition());
+        if (center == null) return false; // 无村庄（核心/钟）不干活
         VillageState.get(level, center); // 确保村庄状态存在
         this.spawnPos = new BlockPos(center.getX(), VillageContext.surfaceY(level, center), center.getZ());
         this.done = false;

@@ -79,7 +79,7 @@ public class EnhanceGoal extends Goal {
 
         Guard guard = findTarget(level, action);
         if (guard == null) {
-            if (villager.tickCount % 400 == 0) {
+            if (villager.tickCount % 4000 == 0) {
                 com.mojang.logging.LogUtils.getLogger().info("[VW] {} 未找到可强化目标（无警卫或无需求）", profession);
             }
             return false;
