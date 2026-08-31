@@ -32,6 +32,12 @@ public class VillageState extends SavedData {
     private long lastThreatTime = -1;
     /** 村庄核心是否已激活（村民≥20转换钟后置 true；威胁召唤/收入仅核心激活后生效） */
     private boolean coreActive = false;
+    /** 核心是否损坏（村庄内所有村民死亡持续阈值后置 true；损坏后核心功能全部停止） */
+    private boolean coreDamaged = false;
+    /** 损坏进度（tick，村民数为0时累计） */
+    private int damageProgress = 0;
+    /** 恢复进度（tick，村民数>0时累计） */
+    private int repairProgress = 0;
     /** 信标效果等级（0=再生I初始，升级解锁其他效果/等级II） */
     private int beaconEffectLevel = 0;
     /** 信标范围等级（0=50×50初始） */
@@ -70,6 +76,9 @@ public class VillageState extends SavedData {
         state.emeraldBalance = tag.getLong("EmeraldBalance");
         state.lastThreatTime = tag.getLong("LastThreatTime");
         state.coreActive = tag.getBoolean("CoreActive");
+        state.coreDamaged = tag.getBoolean("CoreDamaged");
+        state.damageProgress = tag.getInt("DamageProgress");
+        state.repairProgress = tag.getInt("RepairProgress");
         state.beaconEffectLevel = tag.getInt("BeaconEffectLevel");
         state.beaconRangeLevel = tag.getInt("BeaconRangeLevel");
         state.wallLevel = tag.getInt("WallLevel");
@@ -95,6 +104,9 @@ public class VillageState extends SavedData {
         tag.putLong("EmeraldBalance", emeraldBalance);
         tag.putLong("LastThreatTime", lastThreatTime);
         tag.putBoolean("CoreActive", coreActive);
+        tag.putBoolean("CoreDamaged", coreDamaged);
+        tag.putInt("DamageProgress", damageProgress);
+        tag.putInt("RepairProgress", repairProgress);
         tag.putInt("BeaconEffectLevel", beaconEffectLevel);
         tag.putInt("BeaconRangeLevel", beaconRangeLevel);
         tag.putInt("WallLevel", wallLevel);
@@ -172,6 +184,37 @@ public class VillageState extends SavedData {
             this.coreActive = active;
             setDirty();
         }
+    }
+
+    // ---------------- 核心损坏 ----------------
+
+    public boolean isCoreDamaged() {
+        return coreDamaged;
+    }
+
+    public void setCoreDamaged(boolean damaged) {
+        if (this.coreDamaged != damaged) {
+            this.coreDamaged = damaged;
+            setDirty();
+        }
+    }
+
+    public int damageProgress() {
+        return damageProgress;
+    }
+
+    public void setDamageProgress(int ticks) {
+        this.damageProgress = ticks;
+        setDirty();
+    }
+
+    public int repairProgress() {
+        return repairProgress;
+    }
+
+    public void setRepairProgress(int ticks) {
+        this.repairProgress = ticks;
+        setDirty();
     }
 
     public long lastThreatTime() {

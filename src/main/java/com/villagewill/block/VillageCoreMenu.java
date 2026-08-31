@@ -16,9 +16,10 @@ import net.minecraft.world.inventory.SimpleContainerData;
  * 服务端每 tick 刷新数据（ContainerData 自动同步到客户端屏幕）
  * 数据索引：0村民数 1警卫数 2玩家声望 3绿宝石余额 4核心激活
  *          5信标效果等级 6信标范围等级 7围墙等级 8队长科技 9护卫科技 10警卫科技
+ *          11核心损坏
  */
 public class VillageCoreMenu extends AbstractContainerMenu {
-    public static final int DATA_COUNT = 11;
+    public static final int DATA_COUNT = 12;
 
     private final ContainerData data;
     private final BlockPos corePos;
@@ -57,6 +58,7 @@ public class VillageCoreMenu extends AbstractContainerMenu {
             data.set(8, state.captainTechLevel());
             data.set(9, state.escortTechLevel());
             data.set(10, state.guardTechLevel());
+            data.set(11, state.isCoreDamaged() ? 1 : 0);
         }
         super.broadcastChanges();
     }

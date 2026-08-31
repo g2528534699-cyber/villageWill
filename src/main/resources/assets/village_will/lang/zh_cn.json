@@ -14,5 +14,6 @@
   "gui.village_will.core.captain": "队长科技: %s",
   "gui.village_will.core.escort": "护卫科技: %s",
   "gui.village_will.core.guard_tech": "警卫科技: %s",
-  "gui.village_will.core.inactive": "（核心未激活）"
+  "gui.village_will.core.inactive": "（核心未激活）",
+  "gui.village_will.core.damaged": "（核心已损坏，功能停止）"
 }

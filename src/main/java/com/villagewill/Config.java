@@ -75,7 +75,12 @@ public class Config {
     // ---------- 村庄核心：威胁召唤（村民受攻击时耗绿宝石召唤傀儡） ----------
     public static final ForgeConfigSpec.BooleanValue THREAT_ENABLED;
     public static final ForgeConfigSpec.ConfigValue<List<? extends String>> THREAT_WEIGHTS;
-    public static final ForgeConfigSpec.DoubleValue THREAT_COST_PER_THREAT;
+    public static final ForgeConfigSpec.BooleanValue THREAT_ATTR_EVALUATION;
+    public static final ForgeConfigSpec.DoubleValue THREAT_SPEND_RATIO;
+    public static final ForgeConfigSpec.IntValue THREAT_IRON_COST;
+    public static final ForgeConfigSpec.IntValue THREAT_STONE_COST;
+    public static final ForgeConfigSpec.IntValue THREAT_IRON_POWER;
+    public static final ForgeConfigSpec.IntValue THREAT_STONE_POWER;
     public static final ForgeConfigSpec.IntValue THREAT_MAX_GOLEMS;
     public static final ForgeConfigSpec.IntValue THREAT_IRON_THRESHOLD;
     public static final ForgeConfigSpec.IntValue THREAT_DURATION_TICKS;
@@ -85,6 +90,9 @@ public class Config {
     public static final ForgeConfigSpec.IntValue CORE_VILLAGER_THRESHOLD;
     public static final ForgeConfigSpec.IntValue CORE_CONVERT_CHECK_TICKS;
     public static final ForgeConfigSpec.IntValue CORE_FORCE_LOAD_RADIUS;
+    public static final ForgeConfigSpec.IntValue CORE_DAMAGE_CHECK_TICKS;
+    public static final ForgeConfigSpec.IntValue CORE_DAMAGE_THRESHOLD_TICKS;
+    public static final ForgeConfigSpec.IntValue CORE_REPAIR_THRESHOLD_TICKS;
 
     // ---------- 石匠 ----------
     public static final ForgeConfigSpec.BooleanValue MASON_ENABLED;
@@ -283,7 +291,7 @@ public class Config {
         BUILDER.push("threat");
         THREAT_ENABLED = BUILDER.comment("村庄核心威胁召唤：村民受敌对生物攻击时，按威胁值耗绿宝石召唤傀儡（限时）")
                 .define("enabled", true);
-        THREAT_WEIGHTS = BUILDER.comment("威胁权重表（modid:entity=权重，未列出=1）")
+        THREAT_WEIGHTS = BUILDER.comment("威胁基础权重表（modid:entity=权重，未列出=1）")
                 .defineList("weights", Arrays.asList(
                         "minecraft:zombie=1", "minecraft:husk=2", "minecraft:drowned=2",
                         "minecraft:skeleton=2", "minecraft:stray=2", "minecraft:spider=1",
@@ -295,11 +303,21 @@ public class Config {
                         "minecraft:ghast=6", "minecraft:magma_cube=2", "minecraft:wither_skeleton=5",
                         "minecraft:warden=30", "minecraft:wither=50", "minecraft:ender_dragon=100"),
                         o -> o instanceof String);
-        THREAT_COST_PER_THREAT = BUILDER.comment("每威胁值消耗绿宝石（消耗=ceil(威胁值×系数)，最小1；默认僵尸≈1颗）")
-                .defineInRange("costPerThreat", 0.5, 0.05, 10.0);
+        THREAT_ATTR_EVALUATION = BUILDER.comment("综合属性评估：威胁值=基础权重×属性因子（生命/护甲/攻击，兼容其他mod生物）")
+                .define("attrEvaluation", true);
+        THREAT_SPEND_RATIO = BUILDER.comment("召唤可用余额比例（0-1，其余绿宝石留给科技升级；小威胁自然少召、大威胁按预算上限满编）")
+                .defineInRange("spendRatio", 0.5, 0.05, 1.0);
+        THREAT_IRON_COST = BUILDER.comment("铁傀儡单只绿宝石成本")
+                .defineInRange("ironCost", 3, 1, 100);
+        THREAT_STONE_COST = BUILDER.comment("石傀儡单只绿宝石成本")
+                .defineInRange("stoneCost", 1, 1, 100);
+        THREAT_IRON_POWER = BUILDER.comment("铁傀儡战力（用于按威胁值组队）")
+                .defineInRange("ironPower", 5, 1, 100);
+        THREAT_STONE_POWER = BUILDER.comment("石傀儡战力")
+                .defineInRange("stonePower", 2, 1, 100);
         THREAT_MAX_GOLEMS = BUILDER.comment("单次最多召唤傀儡数")
                 .defineInRange("maxGolemsPerCall", 3, 1, 10);
-        THREAT_IRON_THRESHOLD = BUILDER.comment("威胁值≥该值时召唤铁傀儡，否则召唤石傀儡")
+        THREAT_IRON_THRESHOLD = BUILDER.comment("威胁值≥该值时召唤铁傀儡（否则仅石傀儡）")
                 .defineInRange("ironGolemThreshold", 8, 1, 100);
         THREAT_DURATION_TICKS = BUILDER.comment("召唤傀儡存在时长（tick，默认600=30秒）")
                 .defineInRange("durationTicks", 600, 100, 72000);
@@ -314,6 +332,12 @@ public class Config {
                 .defineInRange("convertCheckTicks", 100, 20, 600);
         CORE_FORCE_LOAD_RADIUS = BUILDER.comment("核心区块强加载半径（区块数，1=3×3区块）")
                 .defineInRange("forceLoadRadius", 1, 0, 8);
+        CORE_DAMAGE_CHECK_TICKS = BUILDER.comment("核心损坏检测间隔（tick）")
+                .defineInRange("damageCheckTicks", 100, 20, 600);
+        CORE_DAMAGE_THRESHOLD_TICKS = BUILDER.comment("村庄内村民全部死亡持续该时长（tick）后核心损坏（默认1200=60秒）")
+                .defineInRange("damageThresholdTicks", 1200, 100, 24000);
+        CORE_REPAIR_THRESHOLD_TICKS = BUILDER.comment("村民重新出现并存活该时长（tick）后核心自动恢复")
+                .defineInRange("repairThresholdTicks", 1200, 100, 24000);
         BUILDER.pop();
 
         SPEC = BUILDER.build();

@@ -32,18 +32,28 @@ import org.jetbrains.annotations.Nullable;
  */
 public class VillageCoreBlock extends BaseEntityBlock implements IForgeBlock {
     public static final String ID = "village_core";
+    /** 核心损坏状态（村庄内所有村民死亡后置 true，功能停止） */
+    public static final net.minecraft.world.level.block.state.properties.BooleanProperty DAMAGED =
+            net.minecraft.world.level.block.state.properties.BooleanProperty.create("damaged");
+
     public static final VillageCoreBlock INSTANCE = new VillageCoreBlock(
             BlockBehaviour.Properties.of()
                     .mapColor(MapColor.COLOR_PURPLE)
                     .strength(-1.0F, 3600000.0F) // 不可破坏
                     .sound(SoundType.METAL)
                     .noLootTable()
-                    .lightLevel(s -> 15));
+                    .lightLevel(s -> s.getValue(DAMAGED) ? 4 : 15));
 
     private static final VoxelShape SHAPE = Block.box(2.0D, 0.0D, 2.0D, 14.0D, 14.0D, 14.0D);
 
     private VillageCoreBlock(Properties properties) {
         super(properties);
+        this.registerDefaultState(this.stateDefinition.any().setValue(DAMAGED, false));
+    }
+
+    @Override
+    protected void createBlockStateDefinition(net.minecraft.world.level.block.state.StateDefinition.Builder<Block, BlockState> builder) {
+        builder.add(DAMAGED);
     }
 
     @Override
@@ -78,6 +88,14 @@ public class VillageCoreBlock extends BaseEntityBlock implements IForgeBlock {
     @Nullable
     public BlockEntity newBlockEntity(BlockPos pos, BlockState state) {
         return new VillageCoreBlockEntity(pos, state);
+    }
+
+    @Override
+    @Nullable
+    public <T extends BlockEntity> net.minecraft.world.level.block.entity.BlockEntityTicker<T> getTicker(
+            Level level, BlockState state, net.minecraft.world.level.block.entity.BlockEntityType<T> type) {
+        return createTickerHelper(type, com.villagewill.registry.ModBlockEntities.VILLAGE_CORE.get(),
+                VillageCoreBlockEntity::tick);
     }
 
     @Override

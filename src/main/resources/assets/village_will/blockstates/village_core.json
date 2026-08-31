@@ -1,7 +1,10 @@
 {
   "variants": {
-    "": {
+    "damaged=false": {
       "model": "village_will:block/village_core"
+    },
+    "damaged=true": {
+      "model": "village_will:block/village_core_damaged"
     }
   }
 }

@@ -14,5 +14,6 @@
   "gui.village_will.core.captain": "Captain tech: %s",
   "gui.village_will.core.escort": "Escort tech: %s",
   "gui.village_will.core.guard_tech": "Guard tech: %s",
-  "gui.village_will.core.inactive": "(core inactive)"
+  "gui.village_will.core.inactive": "(core inactive)",
+  "gui.village_will.core.damaged": "(core damaged, functions stopped)"
 }

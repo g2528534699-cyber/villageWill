@@ -49,6 +49,9 @@ public class VillageCoreScreen extends AbstractContainerScreen<VillageCoreMenu> 
         if (menu.getData(4) == 0) {
             graphics.drawString(font, Component.translatable("gui." + VillageWill.MODID + ".core.inactive"), 8, 6 + 12 * line, 0xFF5555);
         }
+        if (menu.getData(11) == 1) {
+            graphics.drawString(font, Component.translatable("gui." + VillageWill.MODID + ".core.damaged"), 8, 6 + 12 * line, 0xFF3333);
+        }
     }
 
     private Component lineText(String key, int value) {
