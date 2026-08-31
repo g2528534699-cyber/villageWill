@@ -52,15 +52,26 @@ public class EnhanceGoal extends Goal {
         if (villager.isBaby() || !Config.ENHANCE_INTERACTION_ENABLED.get()) return false;
 
         VillagerProfession profession = villager.getVillagerData().getProfession();
+        if (villager.tickCount % 100 == 0) {
+            com.mojang.logging.LogUtils.getLogger().info("[VW] EnhanceGoal tick: prof={} tick={}",
+                    profession, villager.tickCount);
+        }
         if (profession == VillagerProfession.NONE) return false;
         Optional<VillagerJobMemory> mem = CapabilityRegistry.jobOf(villager);
-        if (mem.isEmpty()) return false;
+        if (mem.isEmpty()) {
+            if (villager.tickCount % 100 == 0) {
+                com.mojang.logging.LogUtils.getLogger().info("[VW] {} 无能力", profession);
+            }
+            return false;
+        }
         VillagerJobMemory memory = mem.get();
 
         // 牧师：日出时走向村庄中心复活警卫
         if (profession == VillagerProfession.CLERIC) {
             if (!Config.CLERIC_ENABLED.get()) return false;
-            if (memory.getUses(ClericAction.ACTION_ID) <= 0) return false;
+            int clericDaily = Config.levelValue(Config.CLERIC_RESURRECT_PER_LEVEL.get(),
+                    villager.getVillagerData().getLevel());
+            if (memory.usesFor(ClericAction.ACTION_ID, clericDaily) <= 0) return false;
             if (!ClericAction.isDawn(level)) return false;
             BlockPos center = VillageContext.homeOf(villager).orElse(villager.blockPosition());
             if (!ClericAction.canResurrect(level, center)) return false;
@@ -72,13 +83,26 @@ public class EnhanceGoal extends Goal {
 
         ProfessionAction action = ProfessionActions.forProfession(profession);
         if (action == null) return false;
-        if (memory.getUses(action.id()) <= 0) return false;
+        int daily = action.dailyUses(villager.getVillagerData().getLevel());
+        if (memory.usesFor(action.id(), daily) <= 0) {
+            if (villager.tickCount % 100 == 0) {
+                com.mojang.logging.LogUtils.getLogger().info("[VW] {} 次数不足: {}<=0 (daily={})", profession, action.id(), daily);
+            }
+            return false;
+        }
 
         Guard guard = findTarget(level, action);
-        if (guard == null) return false;
+        if (guard == null) {
+            if (villager.tickCount % 200 == 0) {
+                com.mojang.logging.LogUtils.getLogger().info("[VW] {} 未找到可强化目标（无警卫或无需求）", profession);
+            }
+            return false;
+        }
         this.targetGuard = guard;
         this.clericTarget = null;
         this.executed = false;
+        com.mojang.logging.LogUtils.getLogger().info("[VW] {} 选定目标警卫 {} 距离={}", profession,
+                guard.blockPosition(), villager.distanceTo(guard));
         return true;
     }
 
@@ -86,8 +110,6 @@ public class EnhanceGoal extends Goal {
     public boolean canContinueToUse() {
         if (executed) return false;
         if (targetGuard != null && !targetGuard.isAlive()) return false;
-        // brain 重新设置了行走目标（村民要去做别的事）→ 让位
-        if (villager.getBrain().hasMemoryValue(MemoryModuleType.WALK_TARGET)) return false;
         return targetGuard != null || clericTarget != null;
     }
 
@@ -101,6 +123,8 @@ public class EnhanceGoal extends Goal {
     public void tick() {
         if (executed) return;
         if (!(villager.level() instanceof ServerLevel level)) return;
+        // 压制村民 brain 的行走目标，避免被日程打断（goal 激活期间以强化动作为准）
+        villager.getBrain().eraseMemory(MemoryModuleType.WALK_TARGET);
         if (clericTarget != null) {
             if (villager.blockPosition().distSqr(clericTarget) <= 6.25D) {
                 executeCleric(level);
@@ -110,7 +134,8 @@ public class EnhanceGoal extends Goal {
             return;
         }
         if (targetGuard == null || !targetGuard.isAlive()) return;
-        if (villager.distanceToSqr(targetGuard) <= 6.25D) {
+        // 3.5 格执行（近距离寻路器在 ~2.8 格时不再生成路径，留出余量）
+        if (villager.distanceToSqr(targetGuard) <= 12.25D) {
             executeAction(level, targetGuard);
         } else {
             rePath();

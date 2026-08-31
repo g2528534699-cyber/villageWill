@@ -1,6 +1,9 @@
 package com.villagewill.behavior.actions;
 
 import com.villagewill.Config;
+import com.villagewill.behavior.GuardFoodLogic;
+import com.villagewill.capability.CapabilityRegistry;
+import com.villagewill.capability.GuardBuffState;
 import com.villagewill.capability.VillagerJobMemory;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.npc.Villager;
@@ -11,7 +14,7 @@ import tallestegg.guardvillagers.entities.Guard;
 /**
  * 功能8：屠夫给警卫牛排
  * - 1级1块、2级2块、3级3块、4级4块、5级5块
- * - 每日2次
+ * - 放入专用食物槽（§4.2，不占装备槽）；每日2次
  */
 public final class ButcherAction implements ProfessionAction {
     public static final String ACTION_ID = "butcher";
@@ -27,17 +30,23 @@ public final class ButcherAction implements ProfessionAction {
     }
 
     @Override
+    public int dailyUses(int villagerLevel) {
+        return Config.BUTCHER_USES_PER_DAY.get();
+    }
+
+    @Override
     public boolean canApplyTo(Guard guard, int villagerLevel) {
-        return !ActionUtil.hasItem(guard, Items.COOKED_BEEF);
+        GuardBuffState state = CapabilityRegistry.guardStateOf(guard).orElse(null);
+        return state != null && !GuardFoodLogic.hasFood(state, Items.COOKED_BEEF);
     }
 
     @Override
     public boolean execute(ServerLevel level, Villager villager, Guard guard, VillagerJobMemory memory) {
+        GuardBuffState state = CapabilityRegistry.guardStateOf(guard).orElse(null);
+        if (state == null) return false;
         int count = Config.levelValue(Config.BUTCHER_STEAK_PER_LEVEL.get(), villager.getVillagerData().getLevel());
-        int slot = ActionUtil.firstEmptySlot(guard.guardInventory, 0, 4); // 槽0-3，不占副手/主手
-        if (slot < 0) return false;
-        guard.guardInventory.setItem(slot, new ItemStack(Items.COOKED_BEEF, count));
-        memory.consumeUse(ACTION_ID);
+        if (!GuardFoodLogic.addFood(state, new ItemStack(Items.COOKED_BEEF, count))) return false;
+        memory.consumeUse(ACTION_ID, dailyUses(villager.getVillagerData().getLevel()));
         return true;
     }
 }

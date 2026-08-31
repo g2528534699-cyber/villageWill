@@ -6,11 +6,11 @@ import com.villagewill.util.EnchantRoll;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.npc.Villager;
 import net.minecraft.world.item.ArmorItem;
+import net.minecraft.world.item.AxeItem;
 import net.minecraft.world.item.BowItem;
 import net.minecraft.world.item.CrossbowItem;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.SwordItem;
-import net.minecraft.world.item.AxeItem;
 import tallestegg.guardvillagers.entities.Guard;
 
 import java.util.ArrayList;
@@ -36,6 +36,11 @@ public final class LibrarianAction implements ProfessionAction {
     }
 
     @Override
+    public int dailyUses(int villagerLevel) {
+        return Config.levelValue(Config.LIBRARIAN_USES_PER_LEVEL.get(), villagerLevel);
+    }
+
+    @Override
     public boolean canApplyTo(Guard guard, int villagerLevel) {
         return !candidates(guard).isEmpty();
     }
@@ -49,7 +54,7 @@ public final class LibrarianAction implements ProfessionAction {
         java.util.Collections.shuffle(candidates, new java.util.Random(level.random.nextLong()));
         for (ItemStack stack : candidates) {
             if (EnchantRoll.enchant(stack, enchantLevel)) {
-                memory.consumeUse(ACTION_ID);
+                memory.consumeUse(ACTION_ID, dailyUses(villager.getVillagerData().getLevel()));
                 return true;
             }
         }

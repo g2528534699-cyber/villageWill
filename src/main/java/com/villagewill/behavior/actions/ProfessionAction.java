@@ -15,6 +15,9 @@ public interface ProfessionAction {
     /** 单次动作经验（§4.1：约2天升2级折算，按职业配置） */
     int xpPerAction();
 
+    /** 该职业等级对应的每日动作次数 */
+    int dailyUses(int villagerLevel);
+
     /** 该警卫是否值得村民走过去强化 */
     boolean canApplyTo(Guard guard, int villagerLevel);
 

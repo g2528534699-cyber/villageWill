@@ -1,3 +1,5 @@
 {
-  "_comment": "Village Will English language file (entries added in phase 3 with village core)"
+  "_comment": "Village Will English language file",
+  "item.village_will.stone_ball": "Stone Ball",
+  "entity.village_will.stone_golem": "Stone Golem"
 }

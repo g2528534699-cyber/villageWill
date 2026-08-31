@@ -31,6 +31,11 @@ public final class WeaponsmithAction implements ProfessionAction {
     }
 
     @Override
+    public int dailyUses(int villagerLevel) {
+        return Config.WEAPONSMITH_USES_PER_DAY.get();
+    }
+
+    @Override
     public boolean canApplyTo(Guard guard, int villagerLevel) {
         ItemStack weapon = guard.guardInventory.getItem(5);
         if (weapon.isEmpty()) return false;
@@ -52,11 +57,12 @@ public final class WeaponsmithAction implements ProfessionAction {
         if (TierUpgrade.isUpgradeableWeapon(weapon)) {
             int tier = TierUpgrade.weaponTierOf(weapon);
             int maxTier = TierUpgrade.maxWeaponTier(villager.getVillagerData().getLevel());
-            if (tier >= 0 && tier < maxTier && memory.getUses(ACTION_ID) > 0) {
+            int daily = dailyUses(villager.getVillagerData().getLevel());
+            if (tier >= 0 && tier < maxTier && memory.usesFor(ACTION_ID, daily) > 0) {
                 ItemStack next = new ItemStack(TierUpgrade.nextWeaponTier(weapon));
                 if (!next.isEmpty()) {
                     guard.guardInventory.setItem(5, next);
-                    memory.consumeUse(ACTION_ID);
+                    memory.consumeUse(ACTION_ID, daily);
                     return true;
                 }
             }

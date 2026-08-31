@@ -6,6 +6,8 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.GlobalPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.ai.memory.MemoryModuleType;
+import net.minecraft.world.entity.ai.village.poi.PoiManager;
+import net.minecraft.world.entity.ai.village.poi.PoiTypes;
 import net.minecraft.world.entity.npc.Villager;
 import tallestegg.guardvillagers.entities.Guard;
 
@@ -26,6 +28,24 @@ public final class VillageContext {
     /** 村民的家（床）位置 */
     public static Optional<BlockPos> homeOf(Villager villager) {
         return villager.getBrain().getMemory(MemoryModuleType.HOME).map(GlobalPos::pos);
+    }
+
+    /** 村庄代表点：最近的钟（MEETING POI），无钟则用给定位置 */
+    public static BlockPos villageCenter(ServerLevel level, BlockPos pos) {
+        return level.getPoiManager()
+                .findClosest(holder -> holder.is(PoiTypes.MEETING), pos, 64, PoiManager.Occupancy.ANY)
+                .orElse(pos.immutable());
+    }
+
+    /** 地表高度（从给定 y 向下找第一个非空气方块的上方） */
+    public static int surfaceY(ServerLevel level, BlockPos pos) {
+        int y = Math.min(pos.getY(), level.getHeight());
+        for (; y > level.getMinBuildHeight() + 1; y--) {
+            net.minecraft.world.level.block.state.BlockState s =
+                    level.getBlockState(new BlockPos(pos.getX(), y, pos.getZ()));
+            if (!s.isAir() && s.getFluidState().isEmpty()) return y + 1;
+        }
+        return pos.getY();
     }
 
     /** 村庄内警卫列表 */

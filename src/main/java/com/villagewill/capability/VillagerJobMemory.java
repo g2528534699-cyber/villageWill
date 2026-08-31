@@ -25,6 +25,8 @@ public class VillagerJobMemory {
     public final Map<String, Integer> usesLeft = new HashMap<>();
     /** 牧羊人驯服的狗 */
     public final List<UUID> dogs = new ArrayList<>();
+    /** 石匠拥有的石傀儡 */
+    public final List<UUID> golems = new ArrayList<>();
     /** 上次记录职业 */
     public String professionSnapshot = "";
 
@@ -42,12 +44,20 @@ public class VillagerJobMemory {
         return usesLeft.getOrDefault(action, 0);
     }
 
+    /** 当日次数：未记录（换天清空后）视为满额 dailyAllowance */
+    public int usesFor(String action, int dailyAllowance) {
+        if (!usesLeft.containsKey(action)) return dailyAllowance;
+        return usesLeft.get(action);
+    }
+
     public void setUses(String action, int count) {
         usesLeft.put(action, count);
     }
 
-    public void consumeUse(String action) {
-        usesLeft.put(action, Math.max(0, getUses(action) - 1));
+    /** 消费一次（未记录时按满额减） */
+    public void consumeUse(String action, int dailyAllowance) {
+        int current = usesFor(action, dailyAllowance);
+        usesLeft.put(action, Math.max(0, current - 1));
     }
 
     /** 检测村民职业是否发生变更（用于牧羊人失业收回狗），返回是否变更 */
@@ -76,6 +86,13 @@ public class VillagerJobMemory {
             dogList.add(d);
         }
         tag.put("Dogs", dogList);
+        ListTag golemList = new ListTag();
+        for (UUID uuid : golems) {
+            CompoundTag g = new CompoundTag();
+            g.putUUID("UUID", uuid);
+            golemList.add(g);
+        }
+        tag.put("Golems", golemList);
         tag.putString("ProfessionSnapshot", professionSnapshot);
         return tag;
     }
@@ -94,6 +111,13 @@ public class VillagerJobMemory {
             ListTag dogList = tag.getList("Dogs", Tag.TAG_COMPOUND);
             for (int i = 0; i < dogList.size(); i++) {
                 dogs.add(dogList.getCompound(i).getUUID("UUID"));
+            }
+        }
+        golems.clear();
+        if (tag.contains("Golems", Tag.TAG_LIST)) {
+            ListTag golemList = tag.getList("Golems", Tag.TAG_COMPOUND);
+            for (int i = 0; i < golemList.size(); i++) {
+                golems.add(golemList.getCompound(i).getUUID("UUID"));
             }
         }
         professionSnapshot = tag.getString("ProfessionSnapshot");

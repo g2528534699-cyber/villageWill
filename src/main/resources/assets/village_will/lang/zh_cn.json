@@ -1,3 +1,5 @@
 {
-  "_comment": "村庄意志 中文语言文件（阶段三加入村庄核心后补充条目）"
+  "_comment": "村庄意志 中文语言文件",
+  "item.village_will.stone_ball": "石头球",
+  "entity.village_will.stone_golem": "石傀儡"
 }

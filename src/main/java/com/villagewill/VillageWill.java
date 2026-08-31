@@ -2,12 +2,16 @@ package com.villagewill;
 
 import com.mojang.logging.LogUtils;
 import com.villagewill.behavior.VillageWillEvents;
+import com.villagewill.entity.StoneGolem;
+import com.villagewill.registry.ModEntities;
 import net.minecraft.client.Minecraft;
+import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.item.CreativeModeTab;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.item.Item;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.common.MinecraftForge;
+import net.minecraftforge.event.entity.EntityAttributeCreationEvent;
 import net.minecraftforge.eventbus.api.IEventBus;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
@@ -17,6 +21,7 @@ import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
 import net.minecraftforge.registries.DeferredRegister;
 import net.minecraftforge.registries.ForgeRegistries;
+import net.minecraftforge.registries.RegistryObject;
 import org.slf4j.Logger;
 
 // The value here should match an entry in the META-INF/mods.toml file
@@ -34,6 +39,9 @@ public class VillageWill
     // Create a Deferred Register to hold CreativeModeTabs which will all be registered under the "village_will" namespace
     public static final DeferredRegister<CreativeModeTab> CREATIVE_MODE_TABS = DeferredRegister.create(net.minecraft.core.registries.Registries.CREATIVE_MODE_TAB, MODID);
 
+    // 石头球物品（石傀儡投掷物，用于实体渲染与展示）
+    public static final RegistryObject<Item> STONE_BALL = ITEMS.register("stone_ball", () -> new Item(new Item.Properties()));
+
     public VillageWill(FMLJavaModLoadingContext context)
     {
         IEventBus modEventBus = context.getModEventBus();
@@ -47,6 +55,11 @@ public class VillageWill
         ITEMS.register(modEventBus);
         // Register the Deferred Register to the mod event bus so tabs get registered
         CREATIVE_MODE_TABS.register(modEventBus);
+        // Register entities (stone golem / thrown stone)
+        ModEntities.ENTITY_TYPES.register(modEventBus);
+
+        // Entity attributes
+        modEventBus.addListener(VillageWill::registerAttributes);
 
         // Register ourselves for server and other game events we are interested in
         MinecraftForge.EVENT_BUS.register(this);
@@ -55,6 +68,11 @@ public class VillageWill
 
         // Register our mod's ForgeConfigSpec so that Forge can create and load the config file for us
         context.registerConfig(ModConfig.Type.SERVER, Config.SPEC);
+    }
+
+    private static void registerAttributes(EntityAttributeCreationEvent event)
+    {
+        event.put(ModEntities.STONE_GOLEM.get(), StoneGolem.createAttributes().build());
     }
 
     private void commonSetup(final FMLCommonSetupEvent event)
@@ -70,6 +88,13 @@ public class VillageWill
         public static void onClientSetup(FMLClientSetupEvent event)
         {
             LOGGER.info("MINECRAFT NAME >> {}", Minecraft.getInstance().getUser().getName());
+        }
+
+        @SubscribeEvent
+        public static void onRegisterRenderers(net.minecraftforge.client.event.EntityRenderersEvent.RegisterRenderers event)
+        {
+            event.registerEntityRenderer(ModEntities.STONE_GOLEM.get(), com.villagewill.entity.client.StoneGolemRenderer::new);
+            event.registerEntityRenderer(ModEntities.THROWN_STONE.get(), com.villagewill.entity.client.ThrownStoneRenderer::new);
         }
     }
 }

@@ -18,7 +18,7 @@ import tallestegg.guardvillagers.entities.Guard;
  * 功能2：盔甲匠强化警卫
  * - 空甲位：发一件层级=职业等级上限的甲（无附魔）
  * - 已有甲：升级到下一层级（皮革→锁链→铁→钻石→下界合金），附魔不保留
- * - 维修：恢复耐久（保留附魔）
+ * - 维修：恢复耐久（保留附魔），无消耗
  * - 每日升级次数 = usesBase + usesPerLevel×(等级-1)（1级默认2次）；维修不限次
  */
 public final class ArmorerAction implements ProfessionAction {
@@ -36,6 +36,11 @@ public final class ArmorerAction implements ProfessionAction {
     @Override
     public int xpPerAction() {
         return Config.ARMORER_XP_PER_ACTION.get();
+    }
+
+    @Override
+    public int dailyUses(int villagerLevel) {
+        return Config.armorerUsesPerDay(villagerLevel);
     }
 
     @Override
@@ -60,18 +65,19 @@ public final class ArmorerAction implements ProfessionAction {
         int villagerLevel = villager.getVillagerData().getLevel();
         int maxTier = TierUpgrade.maxArmorTier(villagerLevel);
         int threshold = Config.ARMORER_REPAIR_THRESHOLD.get();
+        int daily = dailyUses(villagerLevel);
         SimpleContainer inv = guard.guardInventory;
         GuardBuffState state = CapabilityRegistry.guardStateOf(guard).orElse(null);
 
         // 1) 空甲位发甲（消耗每日次数）
-        if (memory.getUses(ACTION_ID) > 0) {
+        if (memory.usesFor(ACTION_ID, daily) > 0) {
             for (int slot = 0; slot < 4; slot++) {
                 if (inv.getItem(slot).isEmpty()) {
                     Item armor = TierUpgrade.armorItemForTier(maxTier, ARMOR_SLOTS[slot]);
                     if (armor != null) {
                         inv.setItem(slot, new ItemStack(armor));
                         markUpgraded(state, slot);
-                        memory.consumeUse(ACTION_ID);
+                        memory.consumeUse(ACTION_ID, daily);
                         return true;
                     }
                 }
@@ -86,14 +92,14 @@ public final class ArmorerAction implements ProfessionAction {
                         if (next != null) {
                             inv.setItem(slot, new ItemStack(next));
                             markUpgraded(state, slot);
-                            memory.consumeUse(ACTION_ID);
+                            memory.consumeUse(ACTION_ID, daily);
                             return true;
                         }
                     }
                 }
             }
         }
-        // 3) 维修最破的一件（不限次，保留附魔）
+        // 3) 维修最破的一件（不限次、无消耗，保留附魔）
         int worstSlot = -1;
         int worstDamage = -1;
         for (int slot = 0; slot < 4; slot++) {

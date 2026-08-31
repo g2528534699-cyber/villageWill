@@ -54,7 +54,8 @@ public final class ClericAction {
             GuardCompat.spawnFreshGuard(level, pos);
         }
         ActionEffects.playTradeComplete(level, center.getCenter());
-        memory.consumeUse(ACTION_ID);
+        memory.consumeUse(ACTION_ID, Config.levelValue(Config.CLERIC_RESURRECT_PER_LEVEL.get(),
+                villager.getVillagerData().getLevel()));
         return true;
     }
 }
