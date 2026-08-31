@@ -52,18 +52,9 @@ public class EnhanceGoal extends Goal {
         if (villager.isBaby() || !Config.ENHANCE_INTERACTION_ENABLED.get()) return false;
 
         VillagerProfession profession = villager.getVillagerData().getProfession();
-        if (villager.tickCount % 100 == 0) {
-            com.mojang.logging.LogUtils.getLogger().info("[VW] EnhanceGoal tick: prof={} tick={}",
-                    profession, villager.tickCount);
-        }
         if (profession == VillagerProfession.NONE) return false;
         Optional<VillagerJobMemory> mem = CapabilityRegistry.jobOf(villager);
-        if (mem.isEmpty()) {
-            if (villager.tickCount % 100 == 0) {
-                com.mojang.logging.LogUtils.getLogger().info("[VW] {} 无能力", profession);
-            }
-            return false;
-        }
+        if (mem.isEmpty()) return false;
         VillagerJobMemory memory = mem.get();
 
         // 牧师：日出时走向村庄中心复活警卫
@@ -84,16 +75,11 @@ public class EnhanceGoal extends Goal {
         ProfessionAction action = ProfessionActions.forProfession(profession);
         if (action == null) return false;
         int daily = action.dailyUses(villager.getVillagerData().getLevel());
-        if (memory.usesFor(action.id(), daily) <= 0) {
-            if (villager.tickCount % 100 == 0) {
-                com.mojang.logging.LogUtils.getLogger().info("[VW] {} 次数不足: {}<=0 (daily={})", profession, action.id(), daily);
-            }
-            return false;
-        }
+        if (memory.usesFor(action.id(), daily) <= 0) return false;
 
         Guard guard = findTarget(level, action);
         if (guard == null) {
-            if (villager.tickCount % 200 == 0) {
+            if (villager.tickCount % 400 == 0) {
                 com.mojang.logging.LogUtils.getLogger().info("[VW] {} 未找到可强化目标（无警卫或无需求）", profession);
             }
             return false;
@@ -185,16 +171,21 @@ public class EnhanceGoal extends Goal {
         if (action == null) return;
         VillagerJobMemory memory = CapabilityRegistry.jobOf(villager).orElse(null);
         if (memory == null) return;
-        if (action.execute(level, villager, guard, memory)) {
+        boolean ok;
+        try {
+            ok = action.execute(level, villager, guard, memory);
+        } catch (Throwable t) {
+            com.mojang.logging.LogUtils.getLogger().error("[VW] {} 执行异常", profession, t);
+            ok = false;
+        }
+        com.mojang.logging.LogUtils.getLogger().info("[VW] {} 执行结果: {} 剩余次数={}", profession, ok,
+                memory.usesFor(action.id(), action.dailyUses(villager.getVillagerData().getLevel())));
+        if (ok) {
             ActionEffects.playTradeComplete(level, guard.position());
             ActionEffects.grantVillagerXp(villager, action.xpPerAction());
-            this.executed = true;
-        } else {
-            // 条件变化（如物品栏已满），放弃本次
-            this.executed = true;
         }
+        this.executed = true;
     }
-
     private void executeCleric(ServerLevel level) {
         VillagerJobMemory memory = CapabilityRegistry.jobOf(villager).orElse(null);
         if (memory == null) return;

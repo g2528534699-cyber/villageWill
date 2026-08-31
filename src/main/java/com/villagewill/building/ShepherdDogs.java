@@ -23,10 +23,6 @@ public final class ShepherdDogs {
 
     /** 周期轮询：认领牧羊人→生成狗；失业/转职→回收狗；狗死亡→补位 */
     public static void tick(ServerLevel level, Villager villager, VillagerJobMemory mem) {
-        if (villager.tickCount % 100 == 0) {
-            com.mojang.logging.LogUtils.getLogger().info("[VW] ShepherdDogs.tick: prof={} tick={} dogs={}",
-                    villager.getVillagerData().getProfession(), villager.tickCount, mem.dogs.size());
-        }
         VillagerProfession profession = villager.getVillagerData().getProfession();
         if (profession == VillagerProfession.SHEPHERD) {
             // 清理已死狗并补位
