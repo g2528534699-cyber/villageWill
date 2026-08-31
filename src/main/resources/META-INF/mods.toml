@@ -71,11 +71,11 @@ description='''${mod_description}'''
     versionRange="${minecraft_version_range}"
     ordering="NONE"
     side="BOTH"
-# 前置依赖：警卫村民（Guard Villagers）
+# 前置依赖：警卫村民（Guard Villagers），实际 mod 版本形如 "1.20.1-1.6.19"
 [[dependencies.${mod_id}]]
     modId="guardvillagers"
     mandatory=true
-    versionRange="[1.6.19,1.7)"
+    versionRange="[1.20.1-1.6.19,2)"
     ordering="NONE"
     side="BOTH"
 
