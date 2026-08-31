@@ -30,11 +30,47 @@ public final class VillageContext {
         return villager.getBrain().getMemory(MemoryModuleType.HOME).map(GlobalPos::pos);
     }
 
-    /** 村庄代表点：最近的钟（MEETING POI），无钟则用给定位置 */
+    /** 村庄代表点：最近的核心（注册表/扫描已加载区块）→ 钟（MEETING）→ 给定位置 */
     public static BlockPos villageCenter(ServerLevel level, BlockPos pos) {
+        // 1. 内存注册表（快速路径）
+        BlockPos core = com.villagewill.village.CoreRegistry.nearest(level.dimension(), pos, 128);
+        if (core != null) return core;
+        // 2. 扫描已加载区块中的核心方块实体（重启后兜底，找到即回填注册表）
+        BlockPos found = scanLoadedCores(level, pos, 128);
+        if (found != null) return found;
+        // 3. 钟（未转换的村庄）
         return level.getPoiManager()
-                .findClosest(holder -> holder.is(PoiTypes.MEETING), pos, 64, PoiManager.Occupancy.ANY)
+                .findClosest(holder -> holder.is(PoiTypes.MEETING), pos, 128, PoiManager.Occupancy.ANY)
                 .orElse(pos.immutable());
+    }
+
+    /** 扫描范围内已加载区块中的村庄核心，返回最近者 */
+    private static BlockPos scanLoadedCores(ServerLevel level, BlockPos pos, int range) {
+        int minX = (pos.getX() - range) >> 4;
+        int maxX = (pos.getX() + range) >> 4;
+        int minZ = (pos.getZ() - range) >> 4;
+        int maxZ = (pos.getZ() + range) >> 4;
+        BlockPos best = null;
+        double bestDist = Double.MAX_VALUE;
+        for (int cx = minX; cx <= maxX; cx++) {
+            for (int cz = minZ; cz <= maxZ; cz++) {
+                net.minecraft.world.level.chunk.LevelChunk chunk = level.getChunkSource().getChunkNow(cx, cz);
+                if (chunk == null) continue;
+                for (net.minecraft.world.level.block.entity.BlockEntity be : chunk.getBlockEntities().values()) {
+                    if (be instanceof com.villagewill.block.VillageCoreBlockEntity) {
+                        double d = pos.distSqr(be.getBlockPos());
+                        if (d < bestDist) {
+                            bestDist = d;
+                            best = be.getBlockPos();
+                        }
+                    }
+                }
+            }
+        }
+        if (best != null) {
+            com.villagewill.village.CoreRegistry.register(level.dimension(), best);
+        }
+        return best;
     }
 
     /** 地表高度（从给定 y 向下找第一个非空气方块的上方） */

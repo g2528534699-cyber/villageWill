@@ -8,6 +8,7 @@ import com.villagewill.building.ShepherdBedGoal;
 import com.villagewill.building.ShepherdDogs;
 import com.villagewill.capability.CapabilityRegistry;
 import com.villagewill.compat.GuardCompat;
+import com.villagewill.village.CoreConversion;
 import com.villagewill.village.ThreatResponse;
 import com.mojang.logging.LogUtils;
 import net.minecraft.server.level.ServerLevel;
@@ -45,6 +46,13 @@ public final class VillageWillEvents {
     }
 
     @SubscribeEvent
+    public static void onLivingHurt(net.minecraftforge.event.entity.living.LivingHurtEvent event) {
+        if (event.getEntity().level().isClientSide) return;
+        // 威胁召唤（核心激活后按威胁值耗绿宝石召唤限时傀儡）
+        ThreatResponse.onVillagerHurt(event);
+    }
+
+    @SubscribeEvent
     public static void onLivingTick(LivingEvent.LivingTickEvent event) {
         LivingEntity entity = event.getEntity();
         if (entity.level().isClientSide) return;
@@ -63,6 +71,8 @@ public final class VillageWillEvents {
                 if (villager.tickCount % 40 == 0) {
                     ShepherdDogs.tick((ServerLevel) villager.level(), villager, memory);
                 }
+                // 村庄核心转换检查（村民≥阈值 → 钟变核心）
+                CoreConversion.tick((ServerLevel) villager.level(), villager);
             });
         }
     }

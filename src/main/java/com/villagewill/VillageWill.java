@@ -57,6 +57,17 @@ public class VillageWill
         CREATIVE_MODE_TABS.register(modEventBus);
         // Register entities (stone golem / thrown stone)
         ModEntities.ENTITY_TYPES.register(modEventBus);
+        // Register block entities (village core)
+        com.villagewill.registry.ModBlockEntities.BLOCK_ENTITY_TYPES.register(modEventBus);
+        // Register menu types (village core info panel)
+        com.villagewill.registry.ModMenuTypes.MENU_TYPES.register(modEventBus);
+        // Register POI types (village core)
+        com.villagewill.registry.ModPois.POI_TYPES.register(modEventBus);
+
+        // 村庄核心方块（阶段三）
+        BLOCKS.register("village_core", () -> com.villagewill.block.VillageCoreBlock.INSTANCE);
+        ITEMS.register("village_core", () -> new net.minecraft.world.item.BlockItem(
+                com.villagewill.block.VillageCoreBlock.INSTANCE, new net.minecraft.world.item.Item.Properties()));
 
         // Entity attributes
         modEventBus.addListener(VillageWill::registerAttributes);
@@ -65,6 +76,8 @@ public class VillageWill
         MinecraftForge.EVENT_BUS.register(this);
         // Register the mod's behavior handlers (villager enhancement AI, guard food logic, etc.)
         MinecraftForge.EVENT_BUS.register(VillageWillEvents.class);
+        // 威胁召唤（显式注册，确保 LivingHurtEvent 生效）
+        MinecraftForge.EVENT_BUS.register(com.villagewill.village.ThreatResponse.class);
 
         // Register our mod's ForgeConfigSpec so that Forge can create and load the config file for us
         context.registerConfig(ModConfig.Type.SERVER, Config.SPEC);
@@ -88,6 +101,10 @@ public class VillageWill
         public static void onClientSetup(FMLClientSetupEvent event)
         {
             LOGGER.info("MINECRAFT NAME >> {}", Minecraft.getInstance().getUser().getName());
+            // 注册村庄核心信息面板屏幕
+            event.enqueueWork(() -> net.minecraft.client.gui.screens.MenuScreens.register(
+                    com.villagewill.registry.ModMenuTypes.VILLAGE_CORE.get(),
+                    com.villagewill.block.VillageCoreScreen::new));
         }
 
         @SubscribeEvent

@@ -81,6 +81,11 @@ public class Config {
     public static final ForgeConfigSpec.IntValue THREAT_DURATION_TICKS;
     public static final ForgeConfigSpec.IntValue THREAT_COOLDOWN_TICKS;
 
+    // ---------- 村庄核心 ----------
+    public static final ForgeConfigSpec.IntValue CORE_VILLAGER_THRESHOLD;
+    public static final ForgeConfigSpec.IntValue CORE_CONVERT_CHECK_TICKS;
+    public static final ForgeConfigSpec.IntValue CORE_FORCE_LOAD_RADIUS;
+
     // ---------- 石匠 ----------
     public static final ForgeConfigSpec.BooleanValue MASON_ENABLED;
     public static final ForgeConfigSpec.IntValue MASON_MAX_HOUSES;
@@ -300,6 +305,15 @@ public class Config {
                 .defineInRange("durationTicks", 600, 100, 72000);
         THREAT_COOLDOWN_TICKS = BUILDER.comment("同一村庄触发冷却（tick，防止连续攻击刷傀儡）")
                 .defineInRange("cooldownTicks", 100, 20, 12000);
+        BUILDER.pop();
+
+        BUILDER.push("village_core");
+        CORE_VILLAGER_THRESHOLD = BUILDER.comment("村庄村民数（不含警卫）达到该值后，最近的钟转换为村庄核心")
+                .defineInRange("villagerThreshold", 20, 5, 100);
+        CORE_CONVERT_CHECK_TICKS = BUILDER.comment("核心转换检查间隔（tick）")
+                .defineInRange("convertCheckTicks", 100, 20, 600);
+        CORE_FORCE_LOAD_RADIUS = BUILDER.comment("核心区块强加载半径（区块数，1=3×3区块）")
+                .defineInRange("forceLoadRadius", 1, 0, 8);
         BUILDER.pop();
 
         SPEC = BUILDER.build();

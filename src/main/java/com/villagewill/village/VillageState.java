@@ -32,6 +32,18 @@ public class VillageState extends SavedData {
     private long lastThreatTime = -1;
     /** 村庄核心是否已激活（村民≥20转换钟后置 true；威胁召唤/收入仅核心激活后生效） */
     private boolean coreActive = false;
+    /** 信标效果等级（0=再生I初始，升级解锁其他效果/等级II） */
+    private int beaconEffectLevel = 0;
+    /** 信标范围等级（0=50×50初始） */
+    private int beaconRangeLevel = 0;
+    /** 围墙等级（0=未建墙，1=圆石，2=石砖，3=深板岩砖） */
+    private int wallLevel = 0;
+    /** 队长科技等级（血量/攻击/附魔） */
+    private int captainTechLevel = 0;
+    /** 护卫科技等级（装备/附魔） */
+    private int escortTechLevel = 0;
+    /** 警卫科技等级（血量/攻击） */
+    private int guardTechLevel = 0;
 
     public VillageState(BlockPos key) {
         this.key = key.immutable();
@@ -58,6 +70,12 @@ public class VillageState extends SavedData {
         state.emeraldBalance = tag.getLong("EmeraldBalance");
         state.lastThreatTime = tag.getLong("LastThreatTime");
         state.coreActive = tag.getBoolean("CoreActive");
+        state.beaconEffectLevel = tag.getInt("BeaconEffectLevel");
+        state.beaconRangeLevel = tag.getInt("BeaconRangeLevel");
+        state.wallLevel = tag.getInt("WallLevel");
+        state.captainTechLevel = tag.getInt("CaptainTechLevel");
+        state.escortTechLevel = tag.getInt("EscortTechLevel");
+        state.guardTechLevel = tag.getInt("GuardTechLevel");
         return state;
     }
 
@@ -77,7 +95,69 @@ public class VillageState extends SavedData {
         tag.putLong("EmeraldBalance", emeraldBalance);
         tag.putLong("LastThreatTime", lastThreatTime);
         tag.putBoolean("CoreActive", coreActive);
+        tag.putInt("BeaconEffectLevel", beaconEffectLevel);
+        tag.putInt("BeaconRangeLevel", beaconRangeLevel);
+        tag.putInt("WallLevel", wallLevel);
+        tag.putInt("CaptainTechLevel", captainTechLevel);
+        tag.putInt("EscortTechLevel", escortTechLevel);
+        tag.putInt("GuardTechLevel", guardTechLevel);
         return tag;
+    }
+
+    // ---------------- 科技等级 ----------------
+
+    public int beaconEffectLevel() {
+        return beaconEffectLevel;
+    }
+
+    public void setBeaconEffectLevel(int level) {
+        this.beaconEffectLevel = level;
+        setDirty();
+    }
+
+    public int beaconRangeLevel() {
+        return beaconRangeLevel;
+    }
+
+    public void setBeaconRangeLevel(int level) {
+        this.beaconRangeLevel = level;
+        setDirty();
+    }
+
+    public int wallLevel() {
+        return wallLevel;
+    }
+
+    public void setWallLevel(int level) {
+        this.wallLevel = level;
+        setDirty();
+    }
+
+    public int captainTechLevel() {
+        return captainTechLevel;
+    }
+
+    public void setCaptainTechLevel(int level) {
+        this.captainTechLevel = level;
+        setDirty();
+    }
+
+    public int escortTechLevel() {
+        return escortTechLevel;
+    }
+
+    public void setEscortTechLevel(int level) {
+        this.escortTechLevel = level;
+        setDirty();
+    }
+
+    public int guardTechLevel() {
+        return guardTechLevel;
+    }
+
+    public void setGuardTechLevel(int level) {
+        this.guardTechLevel = level;
+        setDirty();
     }
 
     // ---------------- 核心激活 ----------------

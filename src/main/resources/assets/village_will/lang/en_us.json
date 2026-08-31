@@ -1,5 +1,18 @@
 {
   "_comment": "Village Will English language file",
   "item.village_will.stone_ball": "Stone Ball",
-  "entity.village_will.stone_golem": "Stone Golem"
+  "entity.village_will.stone_golem": "Stone Golem",
+  "block.village_will.village_core": "Village Core",
+  "gui.village_will.core.title": "=== Village Core ===",
+  "gui.village_will.core.villagers": "Villagers: %s",
+  "gui.village_will.core.guards": "Guards: %s",
+  "gui.village_will.core.reputation": "Your reputation: %s",
+  "gui.village_will.core.emeralds": "Emeralds: %s",
+  "gui.village_will.core.beacon": "Beacon effect level: %s",
+  "gui.village_will.core.beacon_range": "Beacon range level: %s",
+  "gui.village_will.core.wall": "Wall level: %s",
+  "gui.village_will.core.captain": "Captain tech: %s",
+  "gui.village_will.core.escort": "Escort tech: %s",
+  "gui.village_will.core.guard_tech": "Guard tech: %s",
+  "gui.village_will.core.inactive": "(core inactive)"
 }

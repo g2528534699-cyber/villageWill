@@ -1,5 +1,18 @@
 {
   "_comment": "村庄意志 中文语言文件",
   "item.village_will.stone_ball": "石头球",
-  "entity.village_will.stone_golem": "石傀儡"
+  "entity.village_will.stone_golem": "石傀儡",
+  "block.village_will.village_core": "村庄核心",
+  "gui.village_will.core.title": "=== 村庄核心 ===",
+  "gui.village_will.core.villagers": "村民数: %s",
+  "gui.village_will.core.guards": "警卫数: %s",
+  "gui.village_will.core.reputation": "你的声望: %s",
+  "gui.village_will.core.emeralds": "绿宝石: %s",
+  "gui.village_will.core.beacon": "信标效果等级: %s",
+  "gui.village_will.core.beacon_range": "信标范围等级: %s",
+  "gui.village_will.core.wall": "围墙等级: %s",
+  "gui.village_will.core.captain": "队长科技: %s",
+  "gui.village_will.core.escort": "护卫科技: %s",
+  "gui.village_will.core.guard_tech": "警卫科技: %s",
+  "gui.village_will.core.inactive": "（核心未激活）"
 }
