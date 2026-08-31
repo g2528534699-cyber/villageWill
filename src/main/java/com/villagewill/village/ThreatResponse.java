@@ -52,9 +52,10 @@ public final class ThreatResponse {
         int weight = threatWeight(mob);
         if (weight <= 0) return;
 
-        // 村庄绿宝石结算与扣费
+        // 村庄绿宝石结算与扣费（仅核心激活后生效）
         BlockPos center = VillageContext.villageCenter(level, hurt.blockPosition());
         VillageState state = VillageState.get(level, center);
+        if (!state.isCoreActive()) return; // 核心未激活（村庄未达条件）不触发
         state.settleEmeraldIncome(level);
 
         // 冷却：同一村庄短时间内不重复触发（防止连续攻击刷傀儡）

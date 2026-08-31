@@ -30,6 +30,8 @@ public class VillageState extends SavedData {
     private long emeraldBalance = 0;
     /** 威胁召唤冷却（上次触发 gameTime） */
     private long lastThreatTime = -1;
+    /** 村庄核心是否已激活（村民≥20转换钟后置 true；威胁召唤/收入仅核心激活后生效） */
+    private boolean coreActive = false;
 
     public VillageState(BlockPos key) {
         this.key = key.immutable();
@@ -55,6 +57,7 @@ public class VillageState extends SavedData {
         state.lastEmeraldDay = tag.getLong("LastEmeraldDay");
         state.emeraldBalance = tag.getLong("EmeraldBalance");
         state.lastThreatTime = tag.getLong("LastThreatTime");
+        state.coreActive = tag.getBoolean("CoreActive");
         return state;
     }
 
@@ -73,7 +76,22 @@ public class VillageState extends SavedData {
         tag.putLong("LastEmeraldDay", lastEmeraldDay);
         tag.putLong("EmeraldBalance", emeraldBalance);
         tag.putLong("LastThreatTime", lastThreatTime);
+        tag.putBoolean("CoreActive", coreActive);
         return tag;
+    }
+
+    // ---------------- 核心激活 ----------------
+
+    public boolean isCoreActive() {
+        return coreActive;
+    }
+
+    /** 核心激活（阶段三：村庄村民≥20时钟转换为核心时调用） */
+    public void setCoreActive(boolean active) {
+        if (this.coreActive != active) {
+            this.coreActive = active;
+            setDirty();
+        }
     }
 
     public long lastThreatTime() {
