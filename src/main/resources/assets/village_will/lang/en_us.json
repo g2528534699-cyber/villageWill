@@ -1,6 +1,3 @@
 {
-  "item.village_will.village_heart": "Village Heart",
-  "block.village_will.village_heart": "Village Heart",
-  "item.village_will.village_food": "Village Delicacy",
-  "itemGroup.village_will_tab": "Village Will"
+  "_comment": "Village Will English language file (entries added in phase 3 with village core)"
 }
