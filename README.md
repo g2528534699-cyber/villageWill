@@ -5,6 +5,8 @@
 - **远程仓库**: https://github.com/g2528534699-cyber/villageWill
 - 日常提交推送：`git add -A` → `git commit -m "说明"` → `git push`
 - 注意：本机直连 GitHub 可用（比走 socks5 代理稳定），`git push` 无需配置代理。
+- **前置依赖**: Guard Villagers `1.20.1-1.6.19`（jar 已放入 `libs/` 随仓库分发；游戏端需与本 mod 一同放入 `mods/`）
+- **设计文档**: [`docs/方案架构.md`](docs/方案架构.md)
 
 ## 环境要求
 
@@ -12,6 +14,7 @@
 |------|------|------|
 | JDK | 17（本机路径 `C:\Program Files\Microsoft\jdk-17.0.10.7-hotspot`） | 已写入 `gradle.properties` 的 `org.gradle.java.home` |
 | Forge | 1.20.1-47.4.23 | 与游戏端安装版本一致 |
+| Guard Villagers | 1.20.1-1.6.19 | 硬前置，`libs/guardvillagers-1.20.1-1.6.19.jar` |
 | Gradle | 8.8（由 wrapper 自动下载，无需手动安装） | |
 
 ## 常用命令（在工程根目录执行）
