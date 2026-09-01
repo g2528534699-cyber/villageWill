@@ -60,6 +60,9 @@ public class GuardCaptain extends PathfinderMob {
     private int stuckTicks;
     @Nullable
     private net.minecraft.world.phys.Vec3 lastPos;
+    /** 巡逻目标（供卡住检测；巡逻/任务间不清除，直到下一轮选点或脱困） */
+    @Nullable
+    private net.minecraft.world.phys.Vec3 patrolTarget;
 
     public GuardCaptain(EntityType<? extends GuardCaptain> type, Level level) {
         super(type, level);
@@ -69,7 +72,8 @@ public class GuardCaptain extends PathfinderMob {
     public static AttributeSupplier.Builder createAttributes() {
         return Mob.createMobAttributes()
                 .add(Attributes.MAX_HEALTH, 80.0D)
-                .add(Attributes.MOVEMENT_SPEED, 0.3D)
+                // 与警卫（guardvillagers Guard，speedModifier 默认 0.5）一致的行进速度
+                .add(Attributes.MOVEMENT_SPEED, 0.5D)
                 .add(Attributes.ATTACK_DAMAGE, 10.0D)
                 .add(Attributes.ARMOR, 20.0D)
                 .add(Attributes.ARMOR_TOUGHNESS, 8.0D)
@@ -98,18 +102,24 @@ public class GuardCaptain extends PathfinderMob {
 
         LivingEntity target = resolveTarget();
         if (target != null && target.isAlive() && !target.isSpectator()) {
+            if (isVillageAlly(target)) {
+                setTaskTarget(null); // 目标异常变成友军（理论不发生）→ 放弃，绝不误伤
+                return;
+            }
             combatTick(level, target);
         } else {
             patrolTick(level);
         }
 
-        // 卡住检测：导航进行中但 5 秒位移 < 0.01 → 头顶小型爆炸脱困
-        if (getNavigation().isInProgress()) {
+        // 卡住检测：有导航目标/巡逻点/战斗任务但 5 秒位移 < 0.01 → 头顶小型爆炸脱困
+        // （覆盖巡逻掉坑/追击卡墙角/寻路失败等场景）
+        if (getNavigation().isInProgress() || patrolTarget != null || taskTargetUUID != null) {
             double moved = lastPos == null ? Double.MAX_VALUE : position().distanceToSqr(lastPos);
             if (moved < 0.01D) {
                 if (++stuckTicks > 100) {
                     unstuck(level);
                     stuckTicks = -200; // 脱困后 15 秒内不重复
+                    patrolTarget = null;
                 }
             } else {
                 stuckTicks = 0;
@@ -118,14 +128,34 @@ public class GuardCaptain extends PathfinderMob {
         lastPos = position();
     }
 
-    /** 卡住脱困：头顶 2 格无伤爆炸（只炸方块） */
+    /** 卡住脱困：头顶 3×3 无伤爆炸（只炸方块）开路；深陷地下（比村庄中心低 8 格以上）直接传送回村庄中心 */
     private void unstuck(ServerLevel level) {
         Explosion e = new Explosion(level, this,
-                getX(), getY() + 2.0D, getZ(), 2.0F, false,
+                getX(), getY() + 2.0D, getZ(), 3.0F, false,
                 Explosion.BlockInteraction.DESTROY);
         e.explode();
         e.finalizeExplosion(false);
         com.mojang.logging.LogUtils.getLogger().warn("[VW] 警卫队长脱困爆破: 位置={}", blockPosition());
+        // 深陷地下空洞（掉井/坑底）或卡在村庄中心（核心方块上/下）→ 传送回村庄中心上空（向上找空气点，避开建筑）
+        boolean nearCore = villageAnchor != null
+                && Math.abs(getX() - villageAnchor.getX()) < 2.0D
+                && Math.abs(getZ() - villageAnchor.getZ()) < 2.0D;
+        boolean deep = villageAnchor != null && getY() < villageAnchor.getY() - 3.0D;
+        if (nearCore || deep) {
+            // 传送到村庄中心旁 4 格的上空空气点（避开核心方块本身与建筑）
+            int ax = villageAnchor.getX() + 4;
+            int az = villageAnchor.getZ();
+            int y = villageAnchor.getY() + 1;
+            for (; y < level.getMaxBuildHeight() - 4; y++) {
+                if (level.getBlockState(new net.minecraft.core.BlockPos(ax, y, az)).isAir()
+                        && level.getBlockState(new net.minecraft.core.BlockPos(ax, y + 1, az)).isAir()) {
+                    break;
+                }
+            }
+            moveTo(ax + 0.5D, y, az + 0.5D, getYRot(), 0.0F);
+            com.mojang.logging.LogUtils.getLogger().warn("[VW] 警卫队长卡住，传送回村庄中心旁: {}",
+                    new net.minecraft.core.BlockPos(ax, y, az));
+        }
     }
 
     // ---------------- 战斗状态机 ----------------
@@ -136,6 +166,18 @@ public class GuardCaptain extends PathfinderMob {
         double dz = target.getZ() - getZ();
         double horiz = Math.sqrt(dx * dx + dz * dz);
 
+        // 0) 目标在脚下低处（坑/井/地下室内）且水平很近 → 停止寻路防掉坑，原地爆炸开路/近战/射箭处理
+        if (dy <= -1.0D && horiz < 2.5D) {
+            getNavigation().stop();
+            if (isBlockedFrom(target)) {
+                explodeTick(level, target);
+            } else if (distanceToSqr(target) <= 3.5D) {
+                meleeTick(target);
+            } else {
+                shootTick(level, target);
+            }
+            return;
+        }
         // 1) 目标被地形阻挡（地下/墙后/洞穴）→ 无伤爆炸开路（只炸方块，不伤实体）
         if (isBlockedFrom(target)) {
             explodeTick(level, target);
@@ -196,8 +238,9 @@ public class GuardCaptain extends PathfinderMob {
         }
     }
 
-    /** 弓射（力量IV无限弓；箭伤害随科技等级提升） */
+    /** 弓射（力量IV无限弓；箭伤害随科技等级提升；不射友军） */
     private void shootTick(ServerLevel level, LivingEntity target) {
+        if (isVillageAlly(target)) return; // 防误伤
         if (++shootTimer < Config.CAPTAIN_SHOOT_INTERVAL.get()) return;
         shootTimer = 0;
         ItemStack bow = getMainHandItem();
@@ -214,8 +257,18 @@ public class GuardCaptain extends PathfinderMob {
         level.addFreshEntity(arrow);
     }
 
+    /** 村庄友军判定：警卫/铁傀儡/石傀儡/村民/队长——一律不得互相攻击 */
+    private boolean isVillageAlly(LivingEntity e) {
+        return e instanceof tallestegg.guardvillagers.entities.Guard
+                || e instanceof net.minecraft.world.entity.animal.IronGolem
+                || e instanceof com.villagewill.entity.StoneGolem
+                || e instanceof net.minecraft.world.entity.npc.Villager
+                || e instanceof GuardCaptain;
+    }
+
     /** 近战（16 tick 节流） */
     private void meleeTick(LivingEntity target) {
+        if (isVillageAlly(target)) return; // 防误伤
         if (++attackTimer < 16) return;
         attackTimer = 0;
         doHurtTarget(target);
@@ -238,13 +291,14 @@ public class GuardCaptain extends PathfinderMob {
         if (++patrolTimer >= 100) {
             patrolTimer = 0;
             if (villageAnchor != null && getNavigation().isDone()) {
-                // 村庄中心 20~40 格随机巡逻点
+                // 村庄中心 20~40 格随机巡逻点（记录目标，供卡住检测使用）
                 float a = random.nextFloat() * (float) Math.PI * 2.0F;
                 float r = 20.0F + random.nextFloat() * 20.0F;
                 int px = villageAnchor.getX() + (int) (Math.cos(a) * r);
                 int pz = villageAnchor.getZ() + (int) (Math.sin(a) * r);
                 int py = villageAnchor.getY();
-                getNavigation().moveTo(px + 0.5D, py, pz + 0.5D, 0.6D);
+                patrolTarget = new net.minecraft.world.phys.Vec3(px + 0.5D, py, pz + 0.5D);
+                getNavigation().moveTo(patrolTarget.x, patrolTarget.y, patrolTarget.z, 0.6D);
             }
         }
     }
@@ -339,9 +393,10 @@ public class GuardCaptain extends PathfinderMob {
 
     // ---------------- 免疫负面效果 / 装备耐久 ----------------
 
+    /** 免疫全部负面效果（中毒/虚弱/缓慢等），正面效果（信标再生/力量等）正常生效 */
     @Override
     public boolean canBeAffected(net.minecraft.world.effect.MobEffectInstance effect) {
-        return false;
+        return effect.getEffect().isBeneficial();
     }
 
     @Override

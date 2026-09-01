@@ -44,6 +44,10 @@ public final class BeaconAura {
         for (tallestegg.guardvillagers.entities.Guard g : GuardCompat.guardsNear(level, corePos, range)) {
             apply(g, effects, state.beaconEffectLevel());
         }
+        for (com.villagewill.entity.GuardCaptain c : level.getEntitiesOfClass(
+                com.villagewill.entity.GuardCaptain.class, box)) {
+            apply(c, effects, state.beaconEffectLevel());
+        }
         for (IronGolem g : level.getEntitiesOfClass(IronGolem.class, box)) {
             apply(g, effects, state.beaconEffectLevel());
         }

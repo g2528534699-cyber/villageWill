@@ -165,13 +165,16 @@ public final class CaptainManager {
 
     // ---------------- 科技消费 ----------------
 
-    /** 队长血量/攻击（每级 +hp +atk，modifier 幂等） */
+    /** 队长血量/攻击（每级 +hp +atk，modifier 幂等）；行进速度与警卫一致（旧存档实体属性固化，运行时强制刷新） */
     private static void applyCaptainTech(GuardCaptain captain, VillageState state) {
         if (captain.getCaptainTier() != state.captainTechLevel()) {
             captain.setCaptainTier(state.captainTechLevel());
         } else {
             captain.applyTier(); // 确保 modifier 存在（重载后）
         }
+        net.minecraft.world.entity.ai.attributes.AttributeInstance spd =
+                captain.getAttribute(net.minecraft.world.entity.ai.attributes.Attributes.MOVEMENT_SPEED);
+        if (spd != null) spd.setBaseValue(0.5D);
     }
 
     /** 护卫装备：escortTechLevel ≥3 换下界合金+附魔；≥1 钻石；0=铁 */

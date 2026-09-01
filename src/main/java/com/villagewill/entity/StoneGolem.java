@@ -78,6 +78,22 @@ public class StoneGolem extends SnowGolem {
     }
 
     @Override
+    public void aiStep() {
+        super.aiStep();
+        if (this.level().isClientSide) return;
+        // 移除雪傀儡的"路过留雪"特性：清除脚下 4 格刚生成的雪层
+        for (int i = 0; i < 4; ++i) {
+            int j = Mth.floor(this.getX() + (double) ((float) (i % 2) - 0.5F) * 0.3F);
+            int k = Mth.floor(this.getY());
+            int l = Mth.floor(this.getZ() + (double) ((float) (i / 2) - 0.5F) * 0.3F);
+            net.minecraft.core.BlockPos blockpos = new net.minecraft.core.BlockPos(j, k, l);
+            if (this.level().getBlockState(blockpos).is(net.minecraft.world.level.block.Blocks.SNOW)) {
+                this.level().setBlock(blockpos, net.minecraft.world.level.block.Blocks.AIR.defaultBlockState(), 3);
+            }
+        }
+    }
+
+    @Override
     public void addAdditionalSaveData(CompoundTag tag) {
         super.addAdditionalSaveData(tag);
         tag.putInt("StoneTier", tier);

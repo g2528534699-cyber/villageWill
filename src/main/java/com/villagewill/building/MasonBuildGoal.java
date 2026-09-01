@@ -108,19 +108,28 @@ public class MasonBuildGoal extends Goal {
 
     // ---------------- 选址 ----------------
 
-    /** 正方形网格填充：side=ceil(sqrt(已建+1))，i 号地块在 (i%side, i/side)，中心对齐 */
+    /** 正方形网格填充：side=ceil(sqrt(已建+1))，i 号地块在 (i%side, i/side)，中心对齐；
+     *  自动避开村庄中心（核心/钟所在地），防止房子包住或整平挖掉钟/核心 */
     private BlockPos findPlot(ServerLevel level, VillageState state, BlockPos center) {
-        int count = state.houseCount();
-        int side = (int) Math.ceil(Math.sqrt(count + 1));
-        int ix = count % side;
-        int iz = count / side;
         int spacing = Config.MASON_HUT_SPACING.get();
-        int x = center.getX() + (ix - (side - 1) / 2) * spacing;
-        int z = center.getZ() + (iz - (side - 1) / 2) * spacing;
-        // 从高处向下找真实地表（不受村庄中心高度影响，跳过树）
-        int fromY = Math.min(center.getY() + 48, level.getMaxBuildHeight());
-        int y = groundY(level, x, z, fromY);
-        return new BlockPos(x, y, z);
+        int plotRange = Config.MASON_HUT_SIZE.get() / 2 + 2; // 整平范围（含门前延伸）
+        int count = state.houseCount();
+        for (int attempt = 0; attempt < 12; attempt++) {
+            int n = count + attempt;
+            int side = (int) Math.ceil(Math.sqrt(n + 1));
+            int ix = n % side;
+            int iz = n / side;
+            int x = center.getX() + (ix - (side - 1) / 2) * spacing;
+            int z = center.getZ() + (iz - (side - 1) / 2) * spacing;
+            if (Math.abs(x - center.getX()) <= plotRange + 1
+                    && Math.abs(z - center.getZ()) <= plotRange + 1) {
+                continue; // 与村庄中心重叠 → 换下一个网格位置
+            }
+            // 从高处向下找真实地表（不受村庄中心高度影响，跳过树）
+            int y = groundY(level, x, z, Math.min(center.getY() + 48, level.getMaxBuildHeight()));
+            return new BlockPos(x, y, z);
+        }
+        return null;
     }
 
     // ---------------- 建造 ----------------
@@ -145,16 +154,16 @@ public class MasonBuildGoal extends Goal {
         int roofPeak = gy + 3 + (half + 1) / 2; // 坡顶最高层
 
         // 2) 整平（±(half+2)，含门前）：上空清理（树冠等）→ 地基填实（gy-1 向下至多 8 层）
-        //    → 地面至墙顶四层清空（挖平高台/植被，屋内与门前同高）
+        //    → 地面至墙顶四层清空（挖平高台/植被，屋内与门前同高）；村庄核心/钟一律保留
         for (int dx = -scanR; dx <= scanR; dx++) {
             for (int dz = -scanR; dz <= scanR; dz++) {
                 int bx = px + dx;
                 int bz = pz + dz;
                 for (int y = roofPeak + 1; y <= roofPeak + 8; y++) {
                     BlockPos q = new BlockPos(bx, y, bz);
-                    if (!level.getBlockState(q).isAir()) {
-                        level.setBlock(q, Blocks.AIR.defaultBlockState(), 3);
-                    }
+                    BlockState qs = level.getBlockState(q);
+                    if (qs.isAir() || isCoreOrBell(qs)) continue;
+                    level.setBlock(q, Blocks.AIR.defaultBlockState(), 3);
                 }
                 for (int d = 1; d <= 8; d++) {
                     BlockPos below = new BlockPos(bx, gy - d, bz);
@@ -167,9 +176,9 @@ public class MasonBuildGoal extends Goal {
                 }
                 for (int dy = 0; dy <= 3; dy++) {
                     BlockPos q = new BlockPos(bx, gy + dy, bz);
-                    if (!level.getBlockState(q).isAir()) {
-                        level.setBlock(q, Blocks.AIR.defaultBlockState(), 3);
-                    }
+                    BlockState qs = level.getBlockState(q);
+                    if (qs.isAir() || isCoreOrBell(qs)) continue;
+                    level.setBlock(q, Blocks.AIR.defaultBlockState(), 3);
                 }
             }
         }
@@ -269,6 +278,12 @@ public class MasonBuildGoal extends Goal {
             return y + 1;
         }
         return Math.max(fromY, level.getMinBuildHeight() + 2);
+    }
+
+    /** 村庄核心或钟（整平/清空时保留，不可被替换成空气） */
+    private static boolean isCoreOrBell(BlockState state) {
+        Block b = state.getBlock();
+        return b == com.villagewill.block.VillageCoreBlock.INSTANCE || b == Blocks.BELL;
     }
 
     private static List<Block> jobBlockPool() {

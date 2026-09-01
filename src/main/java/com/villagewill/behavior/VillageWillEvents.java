@@ -84,6 +84,35 @@ public final class VillageWillEvents {
     }
 
     @SubscribeEvent
+    public static void onLivingAttack(net.minecraftforge.event.entity.living.LivingAttackEvent event) {
+        if (event.getEntity().level().isClientSide) return;
+        net.minecraft.world.entity.Entity attacker = event.getSource().getEntity();
+        // 村庄友军（警卫/铁傀儡/石傀儡/村民/队长）之间禁止互相攻击：
+        // 1) 任何友军攻击警卫队长（含被 HurtByTargetGoal.alertOthers 拉来的铁傀儡/石傀儡）→ 取消并让其放弃目标
+        // 2) 队长攻击友军（近战/箭矢误伤）→ 取消
+        boolean captainVictim = event.getEntity() instanceof com.villagewill.entity.GuardCaptain;
+        boolean captainAttacker = attacker instanceof com.villagewill.entity.GuardCaptain;
+        if (captainVictim && isVillageAlly(attacker)) {
+            event.setCanceled(true);
+            if (attacker instanceof net.minecraft.world.entity.Mob mob) {
+                mob.setTarget(null); // 放弃目标，防止持续追击
+            }
+        } else if (captainAttacker && isVillageAlly(event.getEntity())) {
+            event.setCanceled(true);
+        }
+    }
+
+    /** 村庄友军判定（与队长一致：警卫/铁傀儡/石傀儡/村民/队长） */
+    private static boolean isVillageAlly(net.minecraft.world.entity.Entity e) {
+        if (e == null) return false;
+        return e instanceof tallestegg.guardvillagers.entities.Guard
+                || e instanceof net.minecraft.world.entity.animal.IronGolem
+                || e instanceof com.villagewill.entity.StoneGolem
+                || e instanceof net.minecraft.world.entity.npc.Villager
+                || e instanceof com.villagewill.entity.GuardCaptain;
+    }
+
+    @SubscribeEvent
     public static void onLivingTick(LivingEvent.LivingTickEvent event) {
         LivingEntity entity = event.getEntity();
         if (entity.level().isClientSide) return;
