@@ -218,10 +218,10 @@ public class MasonBuildGoal extends Goal {
             }
         }
 
-        // 5) 屋内木板地板（含门内第一格）
+        // 5) 屋内木板地板（含门内第一格）：铺在 gy-1 站立层（地板顶=gy，与门外地面平齐，不再高出一格）
         for (int dx = -half + 1; dx <= half - 1; dx++) {
             for (int dz = -half + 1; dz <= half - 1; dz++) {
-                level.setBlock(new BlockPos(px + dx, gy, pz + dz), Blocks.OAK_PLANKS.defaultBlockState(), 3);
+                level.setBlock(new BlockPos(px + dx, gy - 1, pz + dz), Blocks.OAK_PLANKS.defaultBlockState(), 3);
             }
         }
 
@@ -237,10 +237,10 @@ public class MasonBuildGoal extends Goal {
             }
         }
 
-        // 7) 屋内照明：北墙内侧地面火把
-        level.setBlock(new BlockPos(px, gy, pz - (half - 1)), Blocks.TORCH.defaultBlockState(), 3);
+        // 7) 屋内照明：北墙内侧地面火把（站立层 gy-1）
+        level.setBlock(new BlockPos(px, gy - 1, pz - (half - 1)), Blocks.TORCH.defaultBlockState(), 3);
 
-        // 8) 内部 2 个随机职业方块（不重复）
+        // 8) 内部 2 个随机职业方块（不重复，站立层 gy-1，与地板同层不嵌入）
         List<Block> pool = jobBlockPool();
         if (pool.size() >= 2) {
             Block b1 = pool.get(level.random.nextInt(pool.size()));
@@ -248,8 +248,8 @@ public class MasonBuildGoal extends Goal {
             do {
                 b2 = pool.get(level.random.nextInt(pool.size()));
             } while (b2 == b1 && pool.size() > 1);
-            level.setBlock(new BlockPos(px + 1, gy, pz + 1), b1.defaultBlockState(), 3);
-            level.setBlock(new BlockPos(px + 1, gy, pz - 1), b2.defaultBlockState(), 3);
+            level.setBlock(new BlockPos(px + 1, gy - 1, pz + 1), b1.defaultBlockState(), 3);
+            level.setBlock(new BlockPos(px + 1, gy - 1, pz - 1), b2.defaultBlockState(), 3);
         }
 
         // 9) 记录（实际地基高度，供牧羊人放床）并结算
@@ -264,7 +264,8 @@ public class MasonBuildGoal extends Goal {
                 plotCenter, gy, roofPeak, size);
     }
 
-    /** 真实地表高度：从 fromY 向下找第一个非空气且非树叶/原木（树）的方块上方；水面也算地表 */
+    /** 真实地表高度：从 fromY 向下找第一个非空气且非树叶/原木（树）的方块上方；水面也算地表。
+     *  整列挖穿（深渊）时返回世界底部附近，避免在高空 fromY 处悬空建房 */
     private static int groundY(ServerLevel level, int x, int z, int fromY) {
         int y = Math.min(fromY, level.getMaxBuildHeight());
         for (; y > level.getMinBuildHeight() + 1; y--) {
@@ -277,7 +278,7 @@ public class MasonBuildGoal extends Goal {
             }
             return y + 1;
         }
-        return Math.max(fromY, level.getMinBuildHeight() + 2);
+        return level.getMinBuildHeight() + 2;
     }
 
     /** 村庄核心或钟（整平/清空时保留，不可被替换成空气） */

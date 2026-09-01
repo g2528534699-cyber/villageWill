@@ -7,12 +7,15 @@ import com.villagewill.capability.VillagerJobMemory;
 import com.villagewill.util.VillageContext;
 import com.villagewill.village.VillageState;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.ai.goal.Goal;
 import net.minecraft.world.entity.ai.memory.MemoryModuleType;
 import net.minecraft.world.entity.npc.Villager;
 import net.minecraft.world.entity.npc.VillagerProfession;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.phys.Vec3;
 
 import java.util.EnumSet;
@@ -88,23 +91,30 @@ public class ShepherdBedGoal extends Goal {
 
     private void placeBed(ServerLevel level, VillageState state) {
         int beds = state.bedsInHouse(targetHouse);
-        int y = targetHouse.getY();
-        BlockPos pos = beds == 0
-                ? targetHouse
-                : targetHouse.offset(1, 0, 0); // 第二张床并排
-        level.setBlock(pos, Blocks.RED_BED.defaultBlockState(), 3);
+        // 床放在站立层（地板层 = 房子地基 gy-1，与地板同层，不嵌入/不悬浮）
+        int y = targetHouse.getY() - 1;
+        // 两张床并排朝南（头在北侧），避开职业方块 (px+1, pz±1) 与火把 (px, pz-(half-1))
+        BlockPos foot = beds == 0
+                ? new BlockPos(targetHouse.getX() - 1, y, targetHouse.getZ())
+                : new BlockPos(targetHouse.getX(), y, targetHouse.getZ());
+        // setBlock 直放不会自动补床头（setPlacedBy 仅玩家放置触发），手动放置头格
+        BlockState bed = Blocks.RED_BED.defaultBlockState()
+                .setValue(BlockStateProperties.HORIZONTAL_FACING, Direction.SOUTH);
+        level.setBlock(foot, bed, 3);
+        level.setBlock(foot.relative(Direction.NORTH),
+                bed.setValue(BlockStateProperties.BED_PART, net.minecraft.world.level.block.state.properties.BedPart.HEAD), 3);
         state.addBed(targetHouse);
         VillagerJobMemory mem = CapabilityRegistry.jobOf(villager).orElse(null);
         if (mem != null) {
             mem.consumeUse(ACTION_ID, Config.SHEPHERD_BEDS_PER_DAY.get());
         }
-        ActionEffects.playTradeComplete(level, Vec3.atCenterOf(pos));
+        ActionEffects.playTradeComplete(level, Vec3.atCenterOf(foot));
         ActionEffects.grantVillagerXp(villager, Config.SHEPHERD_XP_PER_ACTION.get());
     }
 
     private void pathToHouse() {
         if (targetHouse != null) {
-            villager.getNavigation().moveTo(targetHouse.getX() + 0.5D, targetHouse.getY(), targetHouse.getZ() + 0.5D, 0.5D);
+            villager.getNavigation().moveTo(targetHouse.getX() + 0.5D, targetHouse.getY() - 1, targetHouse.getZ() + 0.5D, 0.5D);
         }
     }
 }
