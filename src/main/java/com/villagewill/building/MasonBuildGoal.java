@@ -7,6 +7,7 @@ import com.villagewill.capability.VillagerJobMemory;
 import com.villagewill.util.VillageContext;
 import com.villagewill.village.VillageState;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.ai.goal.Goal;
 import net.minecraft.world.entity.ai.memory.MemoryModuleType;
@@ -14,7 +15,12 @@ import net.minecraft.world.entity.npc.Villager;
 import net.minecraft.world.entity.npc.VillagerProfession;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.LeavesBlock;
+import net.minecraft.world.level.block.RotatedPillarBlock;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.state.properties.BlockStateProperties;
+import net.minecraft.world.level.block.state.properties.DoubleBlockHalf;
+import net.minecraft.world.level.block.state.properties.SlabType;
 import net.minecraftforge.registries.ForgeRegistries;
 import net.minecraft.resources.ResourceLocation;
 
@@ -23,10 +29,13 @@ import java.util.EnumSet;
 import java.util.List;
 
 /**
- * 石匠建造小屋 AI（阶段二）
+ * 石匠建造小屋 AI（阶段二，v2 改进）
  * - 每天最多 1 栋；一个村庄 ≤15 栋（VillageState）
  * - 选址：以村庄中心为原点按正方形网格填充（side=ceil(sqrt(数量))）→ 村庄轮廓趋向正方形
- * - 小屋：圆石墙+木板屋顶+门洞+2 个随机职业方块（全随机，不固定切石机），无床
+ * - 地形：真实地表扫描（跳过树叶/原木）取区域最低值为地基 → 整平（填坑+挖高+门前平地）
+ *   → 不再悬浮/埋地，门前与屋内同高，村民可正常进出
+ * - 小屋：四角橡木原木柱 + 圆石墙 + 橡木门 + 木板地板 + 南北向斜坡屋顶（顶层台阶）+ 屋内火把
+ *   + 2 个随机职业方块（全随机，不固定切石机）
  * - 到达后一次性整平并建造，记录到 VillageState
  */
 public class MasonBuildGoal extends Goal {
@@ -108,7 +117,9 @@ public class MasonBuildGoal extends Goal {
         int spacing = Config.MASON_HUT_SPACING.get();
         int x = center.getX() + (ix - (side - 1) / 2) * spacing;
         int z = center.getZ() + (iz - (side - 1) / 2) * spacing;
-        int y = VillageContext.surfaceY(level, new BlockPos(x, center.getY(), z));
+        // 从高处向下找真实地表（不受村庄中心高度影响，跳过树）
+        int fromY = Math.min(center.getY() + 48, level.getMaxBuildHeight());
+        int y = groundY(level, x, z, fromY);
         return new BlockPos(x, y, z);
     }
 
@@ -117,50 +128,110 @@ public class MasonBuildGoal extends Goal {
     private void buildHouse(ServerLevel level, VillageState state) {
         int size = Config.MASON_HUT_SIZE.get();
         int half = size / 2;
-        int gy = plotCenter.getY();
-        int roofY = gy + 3;
+        int px = plotCenter.getX();
+        int pz = plotCenter.getZ();
 
-        // 1) 整平 size×size 地面并铺地板（地面层 gy-1）
+        // 1) 基准地面：房子主体（±half）内真实地表最低值 → 墙脚永不悬浮
+        //    （门前延伸区只整平不参与取高，避免门前低洼把整栋房子拖低）
+        int fromY = Math.min(plotCenter.getY() + 48, level.getMaxBuildHeight());
+        int gy = Integer.MAX_VALUE;
+        int scanR = half + 2;
         for (int dx = -half; dx <= half; dx++) {
             for (int dz = -half; dz <= half; dz++) {
-                BlockPos p = plotCenter.offset(dx, 0, dz);
-                // 清理屋顶高度以上的方块
-                for (int y = roofY + 1; y <= roofY + 6; y++) {
-                    BlockPos q = new BlockPos(p.getX(), y, p.getZ());
+                gy = Math.min(gy, groundY(level, px + dx, pz + dz, fromY));
+            }
+        }
+        gy = Math.max(gy, level.getMinBuildHeight() + 4);
+        int roofPeak = gy + 3 + (half + 1) / 2; // 坡顶最高层
+
+        // 2) 整平（±(half+2)，含门前）：上空清理（树冠等）→ 地基填实（gy-1 向下至多 8 层）
+        //    → 地面至墙顶四层清空（挖平高台/植被，屋内与门前同高）
+        for (int dx = -scanR; dx <= scanR; dx++) {
+            for (int dz = -scanR; dz <= scanR; dz++) {
+                int bx = px + dx;
+                int bz = pz + dz;
+                for (int y = roofPeak + 1; y <= roofPeak + 8; y++) {
+                    BlockPos q = new BlockPos(bx, y, bz);
                     if (!level.getBlockState(q).isAir()) {
                         level.setBlock(q, Blocks.AIR.defaultBlockState(), 3);
                     }
                 }
-                // 地面层以下填土
-                BlockPos below = new BlockPos(p.getX(), gy - 1, p.getZ());
-                BlockState bs = level.getBlockState(below);
-                if (bs.isAir() || !bs.getFluidState().isEmpty()) {
-                    level.setBlock(below, Blocks.DIRT.defaultBlockState(), 3);
+                for (int d = 1; d <= 8; d++) {
+                    BlockPos below = new BlockPos(bx, gy - d, bz);
+                    BlockState bs = level.getBlockState(below);
+                    if (bs.isAir() || !bs.getFluidState().isEmpty()) {
+                        level.setBlock(below, Blocks.DIRT.defaultBlockState(), 3);
+                    } else {
+                        break; // 已实心（地表）停止
+                    }
                 }
-                // 地面层清空（墙/内部分别放）
-                BlockPos ground = new BlockPos(p.getX(), gy, p.getZ());
-                if (!level.getBlockState(ground).isAir()) {
-                    level.setBlock(ground, Blocks.AIR.defaultBlockState(), 3);
+                for (int dy = 0; dy <= 3; dy++) {
+                    BlockPos q = new BlockPos(bx, gy + dy, bz);
+                    if (!level.getBlockState(q).isAir()) {
+                        level.setBlock(q, Blocks.AIR.defaultBlockState(), 3);
+                    }
                 }
             }
         }
 
-        // 2) 墙壁（高3格）+ 屋顶（第4层）+ 门洞（南面中间 1×2）
+        // 3) 四角橡木原木柱（gy..gy+3，与墙同高）
+        for (int sx : new int[]{-1, 1}) {
+            for (int sz : new int[]{-1, 1}) {
+                BlockPos corner = new BlockPos(px + sx * half, gy, pz + sz * half);
+                for (int dy = 0; dy <= 3; dy++) {
+                    level.setBlock(corner.above(dy), Blocks.OAK_LOG.defaultBlockState(), 3);
+                }
+            }
+        }
+
+        // 4) 墙（圆石 3 格高）+ 橡木门（南墙中间 1×2，朝向门外）
         for (int dx = -half; dx <= half; dx++) {
             for (int dz = -half; dz <= half; dz++) {
                 boolean wallX = Math.abs(dx) == half;
                 boolean wallZ = Math.abs(dz) == half;
-                boolean door = dx == 0 && dz == half; // 南面门洞
+                boolean corner = wallX && wallZ;
+                boolean door = dx == 0 && dz == half;
+                if (!wallX && !wallZ) continue; // 内部
                 for (int dy = 0; dy < 3; dy++) {
-                    if (!wallX && !wallZ) continue; // 内部
-                    if (door && dy < 2) continue;   // 门洞 1×2
-                    level.setBlock(plotCenter.offset(dx, dy, dz), Blocks.COBBLESTONE.defaultBlockState(), 3);
+                    if (corner) continue; // 角柱已放
+                    if (door) {
+                        if (dy == 0) {
+                            BlockState doorState = Blocks.OAK_DOOR.defaultBlockState()
+                                    .setValue(BlockStateProperties.HORIZONTAL_FACING, Direction.SOUTH);
+                            level.setBlock(new BlockPos(px, gy, pz + half), doorState, 3);
+                            level.setBlock(new BlockPos(px, gy + 1, pz + half),
+                                    doorState.setValue(net.minecraft.world.level.block.DoorBlock.HALF, DoubleBlockHalf.UPPER), 3);
+                        }
+                        continue; // 门洞 1×2
+                    }
+                    level.setBlock(new BlockPos(px + dx, gy + dy, pz + dz), Blocks.COBBLESTONE.defaultBlockState(), 3);
                 }
-                level.setBlock(plotCenter.offset(dx, 3, dz), Blocks.OAK_PLANKS.defaultBlockState(), 3);
             }
         }
 
-        // 3) 内部 2 个随机职业方块（不重复）
+        // 5) 屋内木板地板（含门内第一格）
+        for (int dx = -half + 1; dx <= half - 1; dx++) {
+            for (int dz = -half + 1; dz <= half - 1; dz++) {
+                level.setBlock(new BlockPos(px + dx, gy, pz + dz), Blocks.OAK_PLANKS.defaultBlockState(), 3);
+            }
+        }
+
+        // 6) 屋顶：南北向斜坡（脊在 z 中间，顶层上半台阶坡面）
+        for (int dx = -half; dx <= half; dx++) {
+            for (int dz = -half; dz <= half; dz++) {
+                int h = (half - Math.abs(dz) + 1) / 2;
+                for (int dy = 0; dy <= h; dy++) {
+                    level.setBlock(new BlockPos(px + dx, gy + 3 + dy, pz + dz), Blocks.OAK_PLANKS.defaultBlockState(), 3);
+                }
+                level.setBlock(new BlockPos(px + dx, gy + 3 + h, pz + dz),
+                        Blocks.OAK_SLAB.defaultBlockState().setValue(BlockStateProperties.SLAB_TYPE, SlabType.TOP), 3);
+            }
+        }
+
+        // 7) 屋内照明：北墙内侧地面火把
+        level.setBlock(new BlockPos(px, gy, pz - (half - 1)), Blocks.TORCH.defaultBlockState(), 3);
+
+        // 8) 内部 2 个随机职业方块（不重复）
         List<Block> pool = jobBlockPool();
         if (pool.size() >= 2) {
             Block b1 = pool.get(level.random.nextInt(pool.size()));
@@ -168,18 +239,36 @@ public class MasonBuildGoal extends Goal {
             do {
                 b2 = pool.get(level.random.nextInt(pool.size()));
             } while (b2 == b1 && pool.size() > 1);
-            level.setBlock(plotCenter.offset(1, 0, 1), b1.defaultBlockState(), 3);
-            level.setBlock(plotCenter.offset(1, 0, -1), b2.defaultBlockState(), 3);
+            level.setBlock(new BlockPos(px + 1, gy, pz + 1), b1.defaultBlockState(), 3);
+            level.setBlock(new BlockPos(px + 1, gy, pz - 1), b2.defaultBlockState(), 3);
         }
 
-        // 4) 记录并结算
-        state.addHouse(plotCenter);
+        // 9) 记录（实际地基高度，供牧羊人放床）并结算
+        state.addHouse(new BlockPos(px, gy, pz));
         VillagerJobMemory mem = CapabilityRegistry.jobOf(villager).orElse(null);
         if (mem != null) {
             mem.consumeUse(ACTION_ID, Config.MASON_HOUSES_PER_DAY.get());
         }
         ActionEffects.playTradeComplete(level, plotCenter.getCenter());
         ActionEffects.grantVillagerXp(villager, Config.MASON_XP_PER_ACTION.get());
+        com.mojang.logging.LogUtils.getLogger().info("[VW] 石匠建房完成: 地块={} 地基={} 屋顶={} 大小={}",
+                plotCenter, gy, roofPeak, size);
+    }
+
+    /** 真实地表高度：从 fromY 向下找第一个非空气且非树叶/原木（树）的方块上方；水面也算地表 */
+    private static int groundY(ServerLevel level, int x, int z, int fromY) {
+        int y = Math.min(fromY, level.getMaxBuildHeight());
+        for (; y > level.getMinBuildHeight() + 1; y--) {
+            BlockState s = level.getBlockState(new BlockPos(x, y, z));
+            if (s.isAir()) continue;
+            if (!s.getFluidState().isEmpty()) return y + 1;
+            Block b = s.getBlock();
+            if (b instanceof LeavesBlock || b instanceof RotatedPillarBlock) {
+                continue; // 树冠/树干：继续向下
+            }
+            return y + 1;
+        }
+        return Math.max(fromY, level.getMinBuildHeight() + 2);
     }
 
     private static List<Block> jobBlockPool() {

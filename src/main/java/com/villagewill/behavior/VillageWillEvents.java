@@ -30,12 +30,17 @@ import tallestegg.guardvillagers.entities.Guard;
 @Mod.EventBusSubscriber(modid = VillageWill.MODID)
 public final class VillageWillEvents {
 
+    /** 本进程内已注入 AI 的村民（防实体卸载/跨区块重载触发重复 join 导致 goal 重复注入） */
+    private static final java.util.Set<java.util.UUID> INJECTED_VILLAGERS =
+            java.util.concurrent.ConcurrentHashMap.newKeySet();
+
     private VillageWillEvents() {
     }
 
     @SubscribeEvent
     public static void onEntityJoinLevel(EntityJoinLevelEvent event) {
         if (event.getEntity() instanceof Villager villager && event.getLevel() instanceof ServerLevel) {
+            if (!INJECTED_VILLAGERS.add(villager.getUUID())) return; // 已注入（同 tick 重复 join）
             LogUtils.getLogger().info("[VW] 注入村民行为AI: prof={} pos={}",
                     villager.getVillagerData().getProfession(), villager.blockPosition());
             villager.goalSelector.addGoal(2, new EnhanceGoal(villager));
