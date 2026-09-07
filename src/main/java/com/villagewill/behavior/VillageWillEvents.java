@@ -1,18 +1,15 @@
 package com.villagewill.behavior;
 
-import com.villagewill.Config;
 import com.villagewill.VillageWill;
 import com.villagewill.building.MasonBuildGoal;
 import com.villagewill.building.MasonGolemGoal;
 import com.villagewill.building.ShepherdBedGoal;
 import com.villagewill.building.ShepherdDogs;
 import com.villagewill.capability.CapabilityRegistry;
-import com.villagewill.compat.GuardCompat;
 import com.villagewill.village.CoreConversion;
 import com.villagewill.village.ThreatResponse;
 import com.mojang.logging.LogUtils;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.npc.Villager;
 import net.minecraftforge.event.entity.EntityJoinLevelEvent;
@@ -22,10 +19,11 @@ import net.minecraftforge.fml.common.Mod;
 import tallestegg.guardvillagers.entities.Guard;
 
 /**
- * 事件总线：
- * - EntityJoinLevelEvent：给村民注入行为 AI（强化/建房/放床/石傀儡）
- * - LivingTickEvent：警卫食物逻辑 + 村民每日次数重置 + 牧羊犬轮询 + 临时傀儡到期
- * - LivingHurtEvent：村庄威胁召唤（ThreatResponse）
+ * 事件总线（村庄意志瘦身后）：
+ * - EntityJoinLevelEvent：给村民注入行为 AI（建房/放床/石傀儡）
+ *   —— 注：职业强化互动（EnhanceGoal）与警卫食物逻辑已独立为「警卫村民附加」模组
+ * - LivingTickEvent：村民每日次数重置 + 牧羊犬轮询 + 护卫跟随队长 + 临时傀儡到期
+ * - LivingHurtEvent / LivingAttackEvent：村庄威胁召唤、友军防误伤（阶段三）
  */
 @Mod.EventBusSubscriber(modid = VillageWill.MODID)
 public final class VillageWillEvents {
@@ -43,7 +41,6 @@ public final class VillageWillEvents {
             if (!INJECTED_VILLAGERS.add(villager.getUUID())) return; // 已注入（同 tick 重复 join）
             LogUtils.getLogger().info("[VW] 注入村民行为AI: prof={} pos={}",
                     villager.getVillagerData().getProfession(), villager.blockPosition());
-            villager.goalSelector.addGoal(2, new EnhanceGoal(villager));
             villager.goalSelector.addGoal(2, new MasonBuildGoal(villager));
             villager.goalSelector.addGoal(2, new MasonGolemGoal(villager));
             villager.goalSelector.addGoal(2, new ShepherdBedGoal(villager));
@@ -88,8 +85,6 @@ public final class VillageWillEvents {
         if (event.getEntity().level().isClientSide) return;
         net.minecraft.world.entity.Entity attacker = event.getSource().getEntity();
         // 村庄友军（警卫/铁傀儡/石傀儡/村民/队长）之间禁止互相攻击：
-        // 1) 任何友军攻击警卫队长（含被 HurtByTargetGoal.alertOthers 拉来的铁傀儡/石傀儡）→ 取消并让其放弃目标
-        // 2) 队长攻击友军（近战/箭矢误伤）→ 取消
         boolean captainVictim = event.getEntity() instanceof com.villagewill.entity.GuardCaptain;
         boolean captainAttacker = attacker instanceof com.villagewill.entity.GuardCaptain;
         if (captainVictim && isVillageAlly(attacker)) {
@@ -121,9 +116,6 @@ public final class VillageWillEvents {
         ThreatResponse.tickTemporary(entity);
 
         if (entity instanceof Guard guard) {
-            if (Config.GUARD_FOOD_LOGIC_ENABLED.get()) {
-                GuardFoodLogic.tick(guard);
-            }
             // 护卫跟随队长（每 20 tick 刷新导航目标，无战斗目标时跟随）
             net.minecraft.nbt.CompoundTag data = guard.getPersistentData();
             if (data.getBoolean("VillageWillEscort") && guard.tickCount % 20 == 0) {
